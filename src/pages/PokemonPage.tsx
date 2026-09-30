@@ -7,6 +7,14 @@ const tools=[
   {title:"Shiny Odds",description:"Compare shiny odds and modifiers.",href:"/pokemon/shiny"}
 ];
 
+function toggleTheme(){
+  const root=document.documentElement;
+  const current=root.dataset.theme ?? (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const next=current==="dark"?"light":"dark";
+  root.dataset.theme=next;
+  localStorage.setItem("pokemon-theme",next);
+}
+
 export function PokemonPage(){
   return <PageShell className="pokemon">
     <header className="pokemon-header">
@@ -15,12 +23,7 @@ export function PokemonPage(){
         <h1>Pokémon tools</h1>
         <p className="muted">Small calculators and trackers. Pick one below.</p>
       </div>
-      <button className="theme-toggle" type="button" onClick={()=>{
-        const root=document.documentElement;
-        const next=root.dataset.theme==="dark"?"light":"dark";
-        root.dataset.theme=next;
-        localStorage.setItem("pokemon-theme",next);
-      }}>Light / Dark</button>
+      <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label="Switch light or dark theme">Light / Dark</button>
     </header>
     <div className="tool-accordions">
       {tools.map(tool=>
