@@ -20,13 +20,21 @@ function makeRecipes(target:Stat[]):Recipe[]{
 
 export function PokeMMOBreedingPage(){
   const [targets,setTargets]=useState<Record<Stat,boolean>>({HP:true,Attack:true,Defence:true,"Sp. Attack":false,"Sp. Defence":true,Speed:true});
-  const [genderCost,setGenderCost]=useState(5000);\n  const [nature,setNature]=useState(false);\n  const [everstoneCost,setEverstoneCost]=useState(5000);
+  const [genderCost,setGenderCost]=useState(5000);
+  const [nature,setNature]=useState(false);
+  const [everstoneCost,setEverstoneCost]=useState(5000);
+  const [breederPrice,setBreederPrice]=useState(8000);
   const selected=useMemo(()=>stats.filter(stat=>targets[stat]),[targets]);
   const perfectCount=selected.length;
   const baseParents=perfectCount>0?2**(perfectCount-1):0;
   const breedCount=baseParents>0?baseParents-1:0;
   const braceCount=breedCount*2;
-  const braceCost=braceCount*10000;\n  const natureBreeds=nature?perfectCount:0;\n  const natureCost=natureBreeds*everstoneCost;\n  const fixedTotal=braceCost+(breedCount*genderCost)+natureCost;
+  const braceCost=braceCount*10000;
+  const natureBreeds=nature?perfectCount:0;
+  const natureCost=natureBreeds*everstoneCost;
+  const breederCost=baseParents*breederPrice;
+  const fixedTotal=braceCost+(breedCount*genderCost)+natureCost;
+  const estimatedTotal=fixedTotal+breederCost;
   const recipes=useMemo(()=>makeRecipes(selected),[selected]);
 
   return <PageShell className="pokemon pokemon-tool-page breeding-page">
@@ -64,7 +72,13 @@ export function PokeMMOBreedingPage(){
           </div>)}
         </div>)}
       </div>}
-      <div className="cost-controls"><label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Planning subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Breeder prices, Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
+      <div className="cost-controls">
+        <label className="inline-control">Average 1×31 breeder price <input type="number" min="0" step="500" value={breederPrice} onChange={e=>setBreederPrice(Math.max(0,Number(e.target.value)||0))}/></label>
+        <label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Fixed subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div>
+      <div className="total-summary">
+        <div><span>{baseParents} base breeders @ ₽{breederPrice.toLocaleString()}</span><strong>₽{breederCost.toLocaleString()}</strong></div>
+        <div className="grand-total"><span>Estimated total</span><strong>₽{estimatedTotal.toLocaleString()}</strong></div>
+      </div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing is an editable estimate; GTL prices vary by stat, species/egg group and gender. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
   </PageShell>
 }
