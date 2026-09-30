@@ -6,13 +6,13 @@ type Stat=typeof stats[number];
 
 export function PokeMMOBreedingPage(){
   const [targets,setTargets]=useState<Record<Stat,boolean>>({HP:true,Attack:true,Defence:true,"Sp. Attack":false,"Sp. Defence":true,Speed:true});
-  const [genderCost,setGenderCost]=useState(5000);
+  const [genderCost,setGenderCost]=useState(5000);\n  const [nature,setNature]=useState(false);\n  const [everstoneCost,setEverstoneCost]=useState(5000);
   const selected=useMemo(()=>stats.filter(stat=>targets[stat]),[targets]);
   const perfectCount=selected.length;
   const baseParents=perfectCount>0?2**(perfectCount-1):0;
   const breedCount=baseParents>0?baseParents-1:0;
   const braceCount=breedCount*2;
-  const braceCost=braceCount*10000;
+  const braceCost=braceCount*10000;\n  const natureBreeds=nature?perfectCount:0;\n  const natureCost=natureBreeds*everstoneCost;\n  const fixedTotal=braceCost+(breedCount*genderCost)+natureCost;
 
   return <PageShell className="pokemon pokemon-tool-page breeding-page">
     <p className="eyebrow"><a href="/pokemon">← Pokémon tools</a></p>
@@ -37,7 +37,7 @@ export function PokeMMOBreedingPage(){
         <div><span>Base 1×31 parents</span><strong>{baseParents}</strong></div>
         <div><span>Breeds in chain</span><strong>{breedCount}</strong></div>
       </div>}
-      <div className="cost-controls"><label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>Planning subtotal</span><strong>₽{(braceCost+breedCount*genderCost).toLocaleString()}</strong></div></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Breeder prices, Poké Balls, nature/Everstones and egg moves are not included yet.</p>
+      <div className="cost-controls"><label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Planning subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Breeder prices, Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
   </PageShell>
 }
