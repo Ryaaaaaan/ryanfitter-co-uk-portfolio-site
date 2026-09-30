@@ -1,0 +1,1 @@
+export function ToolLink({title,href}:{title:string;href:string}){return <a className="tool-link" href={href}>{title}<span aria-hidden="true">→</span></a>}
