@@ -2,8 +2,11 @@ import {HomePage} from "./pages/HomePage";
 import {PokemonPage} from "./pages/PokemonPage";
 import {PokemonToolPage} from "./pages/PokemonToolPage";
 
-const pokemonTheme=localStorage.getItem("pokemon-theme");
-if(pokemonTheme==="light"||pokemonTheme==="dark") document.documentElement.dataset.theme=pokemonTheme;
+const path=window.location.pathname.replace(/\/+$/,"")||"/";
+if(path.startsWith("/pokemon")){
+  const pokemonTheme=localStorage.getItem("pokemon-theme");
+  if(pokemonTheme==="light"||pokemonTheme==="dark") document.documentElement.dataset.theme=pokemonTheme;
+}
 
 const pokemonTools:Record<string,[string,string]>={
   "/pokemon/pokemmo-breeding":["PokeMMO Breeding","Plan breeding chains, IV inheritance and costs."],
@@ -13,7 +16,6 @@ const pokemonTools:Record<string,[string,string]>={
 };
 
 export function App(){
-  const path=window.location.pathname.replace(/\/+$/,"")||"/";
   if(path==="/pokemon") return <PokemonPage/>;
   const tool=pokemonTools[path];
   if(tool) return <PokemonToolPage title={tool[0]} description={tool[1]}/>;
