@@ -29,12 +29,25 @@ export function PokeMMOBreedingPage(){
   const perfectCount=selected.length;
   const baseParents=perfectCount>0?2**(perfectCount-1):0;
   const breedCount=baseParents>0?baseParents-1:0;
-  const braceCount=breedCount*2;
+  const braceCount=perfectCount>1?breedCount*2:0;
   const braceCost=braceCount*10000;
-  const natureBreeds=nature?perfectCount:0;
+  const natureBreeds=nature&&perfectCount>0?perfectCount-1:0;
   const natureCost=natureBreeds*everstoneCost;
-  const baseStatCounts=useMemo(()=>Object.fromEntries(stats.map(stat=>[stat,0])) as Record<Stat,number>,[]);
-  selected.forEach((stat,index)=>{baseStatCounts[stat]=perfectCount?Math.min(2**index,2**(perfectCount-1-index)):0});
+  const baseStatCounts=useMemo(()=>{
+    const counts=Object.fromEntries(stats.map(stat=>[stat,0])) as Record<Stat,number>;
+    if(!selected.length)return counts;
+    for(let start=0;start<baseParents;start++){
+      const stat=selected[Math.min(selected.length-1,Math.floor(Math.log2(start+1)))];
+      counts[stat]++;
+    }
+    // The recursive overlap tree has binomial leaf multiplicities.
+    selected.forEach((stat,index)=>{
+      let n=perfectCount-1,k=index,value=1;
+      for(let i=1;i<=k;i++)value=value*(n-k+i)/i;
+      counts[stat]=Math.round(value);
+    });
+    return counts;
+  },[selected,perfectCount,baseParents]);
   const breederCost=selected.reduce((sum,stat)=>sum+(baseStatCounts[stat]*breederPrices[stat]),0);
   const fixedTotal=braceCost+(breedCount*genderCost)+natureCost;
   const estimatedTotal=fixedTotal+breederCost;
@@ -93,6 +106,7 @@ export function PokeMMOBreedingPage(){
         <label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones {nature?`· ${natureName}`:""}</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Fixed subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div>
       <div className="total-summary">
         <div><span>{baseParents} base breeders</span><strong>₽{breederCost.toLocaleString()}</strong></div>
+        <div><span>Breeder split</span><strong>{selected.map(stat=>`${baseStatCounts[stat]}× ${stat}`).join(" · ")||"—"}</strong></div>
         <div className="grand-total"><span>Estimated total</span><strong>₽{estimatedTotal.toLocaleString()}</strong></div>
       </div><div className="calculator-actions"><button type="button" onClick={()=>{localStorage.removeItem("pokemmo-breeding-settings");location.reload()}}>Reset saved prices</button></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
