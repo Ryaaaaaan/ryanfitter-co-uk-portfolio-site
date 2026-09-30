@@ -1,4 +1,4 @@
-import {useMemo,useState} from "react";
+import {useEffect,useMemo,useState} from "react";
 import {PageShell} from "../components/PageShell";
 
 const stats=["HP","Attack","Defence","Sp. Attack","Sp. Defence","Speed"] as const;
@@ -23,7 +23,7 @@ export function PokeMMOBreedingPage(){
   const [genderCost,setGenderCost]=useState(5000);
   const [nature,setNature]=useState(false);
   const [everstoneCost,setEverstoneCost]=useState(5000);
-  const [breederPrice,setBreederPrice]=useState(8000);
+  const [breederPrices,setBreederPrices]=useState<Record<Stat,number>>(()=>Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);
   const selected=useMemo(()=>stats.filter(stat=>targets[stat]),[targets]);
   const perfectCount=selected.length;
   const baseParents=perfectCount>0?2**(perfectCount-1):0;
@@ -32,10 +32,24 @@ export function PokeMMOBreedingPage(){
   const braceCost=braceCount*10000;
   const natureBreeds=nature?perfectCount:0;
   const natureCost=natureBreeds*everstoneCost;
-  const breederCost=baseParents*breederPrice;
+  const baseStatCounts=useMemo(()=>Object.fromEntries(stats.map(stat=>[stat,0])) as Record<Stat,number>,[]);
+  selected.forEach((stat,index)=>{baseStatCounts[stat]=perfectCount?Math.min(2**index,2**(perfectCount-1-index)):0});
+  const breederCost=selected.reduce((sum,stat)=>sum+(baseStatCounts[stat]*breederPrices[stat]),0);
   const fixedTotal=braceCost+(breedCount*genderCost)+natureCost;
   const estimatedTotal=fixedTotal+breederCost;
   const recipes=useMemo(()=>makeRecipes(selected),[selected]);
+
+  useEffect(()=>{
+    const saved=localStorage.getItem("pokemmo-breeding-settings");
+    if(!saved)return;
+    try{
+      const data=JSON.parse(saved);
+      if(data.genderCost!==undefined)setGenderCost(data.genderCost);
+      if(data.everstoneCost!==undefined)setEverstoneCost(data.everstoneCost);
+      if(data.breederPrices)setBreederPrices(current=>({...current,...data.breederPrices}));
+    }catch{}
+  },[]);
+  useEffect(()=>{localStorage.setItem("pokemmo-breeding-settings",JSON.stringify({genderCost,everstoneCost,breederPrices}))},[genderCost,everstoneCost,breederPrices]);
 
   return <PageShell className="pokemon pokemon-tool-page breeding-page">
     <p className="eyebrow"><a href="/pokemon">← Pokémon tools</a></p>
@@ -73,12 +87,12 @@ export function PokeMMOBreedingPage(){
         </div>)}
       </div>}
       <div className="cost-controls">
-        <label className="inline-control">Average 1×31 breeder price <input type="number" min="0" step="500" value={breederPrice} onChange={e=>setBreederPrice(Math.max(0,Number(e.target.value)||0))}/></label>
+        <div className="breeder-prices"><span>1×31 breeder prices</span>{selected.map(stat=><label key={stat}>{stat}<input type="number" min="0" step="500" value={breederPrices[stat]} onChange={e=>setBreederPrices(v=>({...v,[stat]:Math.max(0,Number(e.target.value)||0)}))}/><small>× {baseStatCounts[stat]}</small></label>)}</div>
         <label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Fixed subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div>
       <div className="total-summary">
-        <div><span>{baseParents} base breeders @ ₽{breederPrice.toLocaleString()}</span><strong>₽{breederCost.toLocaleString()}</strong></div>
+        <div><span>{baseParents} base breeders</span><strong>₽{breederCost.toLocaleString()}</strong></div>
         <div className="grand-total"><span>Estimated total</span><strong>₽{estimatedTotal.toLocaleString()}</strong></div>
-      </div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing is an editable estimate; GTL prices vary by stat, species/egg group and gender. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
+      </div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
   </PageShell>
 }
