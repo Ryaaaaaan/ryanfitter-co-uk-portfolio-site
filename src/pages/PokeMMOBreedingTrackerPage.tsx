@@ -2,6 +2,8 @@ import {useEffect,useMemo,useState} from "react";
 import {PageShell} from "../components/PageShell";
 
 type StoredBreeder={id:string;name:string;ivs:string[];note:string;used:boolean};
+type ProjectStep={id:string;label:string;done:boolean};
+type BreedProject={id:string;name:string;steps:ProjectStep[]};
 const ivs=["HP","Attack","Defence","Sp. Attack","Sp. Defence","Speed"];
 
 export function PokeMMOBreedingTrackerPage(){
@@ -10,9 +12,15 @@ export function PokeMMOBreedingTrackerPage(){
   const [note,setNote]=useState("");
   const [selected,setSelected]=useState<string[]>([]);
   const [loaded,setLoaded]=useState(false);
+  const [projects,setProjects]=useState<BreedProject[]>([]);
+  const [projectName,setProjectName]=useState("");
 
-  useEffect(()=>{try{const saved=localStorage.getItem("pokemmo-breeder-box");if(saved)setBreeders(JSON.parse(saved))}catch{}finally{setLoaded(true)}},[]);
+  useEffect(()=>{try{
+    const saved=localStorage.getItem("pokemmo-breeder-box");if(saved)setBreeders(JSON.parse(saved));
+    const savedProjects=localStorage.getItem("pokemmo-breed-projects");if(savedProjects)setProjects(JSON.parse(savedProjects));
+  }catch{}finally{setLoaded(true)}},[]);
   useEffect(()=>{if(loaded)localStorage.setItem("pokemmo-breeder-box",JSON.stringify(breeders))},[loaded,breeders]);
+  useEffect(()=>{if(loaded)localStorage.setItem("pokemmo-breed-projects",JSON.stringify(projects))},[loaded,projects]);
   const available=useMemo(()=>breeders.filter(b=>!b.used).length,[breeders]);
   const single31=useMemo(()=>breeders.filter(b=>!b.used&&b.ivs.length===1).length,[breeders]);
 
@@ -20,6 +28,12 @@ export function PokeMMOBreedingTrackerPage(){
     if(!selected.length)return;
     setBreeders(v=>[{id:crypto.randomUUID(),name:name.trim()||"Breeder",ivs:[...selected],note:note.trim(),used:false},...v]);
     setName("");setNote("");setSelected([]);
+  }
+
+  function addProject(){
+    const clean=projectName.trim();if(!clean)return;
+    setProjects(v=>[{id:crypto.randomUUID(),name:clean,steps:[{id:crypto.randomUUID(),label:"Acquire base breeders",done:false},{id:crypto.randomUUID(),label:"Complete intermediate breeds",done:false},{id:crypto.randomUUID(),label:"Complete final breed",done:false}]},...v]);
+    setProjectName("");
   }
 
   return <PageShell className="pokemon pokemon-tool-page breeder-tracker">
