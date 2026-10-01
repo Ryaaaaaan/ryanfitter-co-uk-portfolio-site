@@ -23,6 +23,7 @@ export function PokeMMOBreedingPage(){
   const [genderCost,setGenderCost]=useState(5000);
   const [nature,setNature]=useState(false);
   const [settingsLoaded,setSettingsLoaded]=useState(false);
+  const [showRecipe,setShowRecipe]=useState(true);
   const [natureName,setNatureName]=useState("Adamant");
   const [everstoneCost,setEverstoneCost]=useState(5000);
   const [breederPrices,setBreederPrices]=useState<Record<Stat,number>>(()=>Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);
@@ -91,7 +92,7 @@ export function PokeMMOBreedingPage(){
         <div><span>Base 1×31 parents</span><strong>{baseParents}</strong></div>
         <div><span>Breeds in chain</span><strong>{breedCount}</strong></div>
       </div>}
-      {perfectCount>1&&<div className="recipe-list">
+      {perfectCount>1&&<><button className="recipe-toggle" type="button" aria-expanded={showRecipe} onClick={()=>setShowRecipe(v=>!v)}>{showRecipe?"Hide":"Show"} {breedCount}-breed recipe</button>{showRecipe&&<div className="recipe-list">
         {Array.from({length:perfectCount-1},(_,i)=>i+2).map(tier=><div className="recipe-tier" key={tier}>
           <h3>{tier}×31 stage</h3>
           {recipes.filter(recipe=>recipe.tier===tier).map((recipe,index)=><div className="recipe-row" key={index}>
@@ -102,7 +103,7 @@ export function PokeMMOBreedingPage(){
             <div className="recipe-result"><strong>{recipe.result.join(" + ")}</strong><small>{tier}×31 child</small></div>
           </div>)}
         </div>)}
-      </div>}
+      </div>}</>}
       <div className="cost-controls">
         <div className="breeder-prices"><span>1×31 breeder prices</span>{selected.map(stat=><label key={stat}>{stat}<input type="number" min="0" step="500" value={breederPrices[stat]} onChange={e=>setBreederPrices(v=>({...v,[stat]:Math.max(0,Number(e.target.value)||0)}))}/><small>× {baseStatCounts[stat]}</small></label>)}</div>
         <label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{(breedCount*genderCost).toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones {nature?`· ${natureName}`:""}</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Fixed subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div>
