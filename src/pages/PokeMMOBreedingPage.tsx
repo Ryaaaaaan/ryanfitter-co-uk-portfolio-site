@@ -22,6 +22,7 @@ export function PokeMMOBreedingPage(){
   const [targets,setTargets]=useState<Record<Stat,boolean>>({HP:true,Attack:true,Defence:true,"Sp. Attack":false,"Sp. Defence":true,Speed:true});
   const [genderCost,setGenderCost]=useState(5000);
   const [nature,setNature]=useState(false);
+  const [settingsLoaded,setSettingsLoaded]=useState(false);
   const [natureName,setNatureName]=useState("Adamant");
   const [everstoneCost,setEverstoneCost]=useState(5000);
   const [breederPrices,setBreederPrices]=useState<Record<Stat,number>>(()=>Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);
@@ -63,13 +64,14 @@ export function PokeMMOBreedingPage(){
       if(data.natureName)setNatureName(data.natureName);
       if(data.breederPrices)setBreederPrices(current=>({...current,...data.breederPrices}));
     }catch{}
+    finally{setSettingsLoaded(true)}
   },[]);
-  useEffect(()=>{localStorage.setItem("pokemmo-breeding-settings",JSON.stringify({genderCost,everstoneCost,natureName,breederPrices}))},[genderCost,everstoneCost,natureName,breederPrices]);
+  useEffect(()=>{if(settingsLoaded)localStorage.setItem("pokemmo-breeding-settings",JSON.stringify({genderCost,everstoneCost,natureName,breederPrices}))},[settingsLoaded,genderCost,everstoneCost,natureName,breederPrices]);
 
   return <PageShell className="pokemon pokemon-tool-page breeding-page">
     <p className="eyebrow"><a href="/pokemon">← Pokémon tools</a></p>
     <h1>PokeMMO Breeding</h1>
-    <p className="muted">Choose the 31 IVs you want on the finished Pokémon. This first planner pass lays out the size of the breeding chain.</p>
+    <p className="muted">Choose the 31 IVs you want on the finished Pokémon. The planner builds the breeding chain and estimates its cost.</p>
 
     <section className="calculator-section">
       <h2>Target IVs</h2>
@@ -108,7 +110,7 @@ export function PokeMMOBreedingPage(){
         <div><span>{baseParents} base breeders</span><strong>₽{breederCost.toLocaleString()}</strong></div>
         <div><span>Breeder split</span><strong>{selected.map(stat=>`${baseStatCounts[stat]}× ${stat}`).join(" · ")||"—"}</strong></div>
         <div className="grand-total"><span>Estimated total</span><strong>₽{estimatedTotal.toLocaleString()}</strong></div>
-      </div><div className="calculator-actions"><button type="button" onClick={()=>{localStorage.removeItem("pokemmo-breeding-settings");location.reload()}}>Reset saved prices</button></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
+      </div><div className="calculator-actions"><button type="button" onClick={()=>{setGenderCost(5000);setEverstoneCost(5000);setNatureName("Adamant");setBreederPrices(Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);localStorage.removeItem("pokemmo-breeding-settings")}}>Reset saved prices</button></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
   </PageShell>
 }
