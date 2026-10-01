@@ -2,6 +2,7 @@ import {HomePage} from "./pages/HomePage";
 import {PokemonPage} from "./pages/PokemonPage";
 import {PokemonToolPage} from "./pages/PokemonToolPage";
 import {PokeMMOBreedingPage} from "./pages/PokeMMOBreedingPage";
+import {PokeMMOBreedingTrackerPage} from "./pages/PokeMMOBreedingTrackerPage";
 
 const path=window.location.pathname.replace(/\/+$/,"")||"/";
 if(path.startsWith("/pokemon")){
@@ -18,6 +19,7 @@ const pokemonTools:Record<string,[string,string]>={
 export function App(){
   if(path==="/pokemon") return <PokemonPage/>;
   if(path==="/pokemon/pokemmo-breeding") return <PokeMMOBreedingPage/>;
+  if(path==="/pokemon/pokemmo-breeding/box") return <PokeMMOBreedingTrackerPage/>;
   const tool=pokemonTools[path];
   if(tool) return <PokemonToolPage title={tool[0]} description={tool[1]}/>;
   return <HomePage/>;
