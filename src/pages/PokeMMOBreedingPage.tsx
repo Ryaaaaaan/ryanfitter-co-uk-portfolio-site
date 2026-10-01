@@ -5,6 +5,7 @@ const stats=["HP","Attack","Defence","Sp. Attack","Sp. Defence","Speed"] as cons
 type Stat=typeof stats[number];
 
 type Recipe={tier:number;left:Stat[];right:Stat[];result:Stat[];leftBrace:Stat;rightBrace:Stat};
+type StoredBreeder={id:string;name:string;ivs:string[];note:string;used:boolean};
 function makeRecipes(target:Stat[]):Recipe[]{
   const recipes:Recipe[]=[];
   for(let size=2;size<=target.length;size++){
@@ -24,6 +25,7 @@ export function PokeMMOBreedingPage(){
   const [nature,setNature]=useState(false);
   const [settingsLoaded,setSettingsLoaded]=useState(false);
   const [showRecipe,setShowRecipe]=useState(true);
+  const [ownedBreeders,setOwnedBreeders]=useState<StoredBreeder[]>([]);
   const [natureName,setNatureName]=useState("Adamant");
   const [everstoneCost,setEverstoneCost]=useState(5000);
   const [breederPrices,setBreederPrices]=useState<Record<Stat,number>>(()=>Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);
@@ -50,13 +52,20 @@ export function PokeMMOBreedingPage(){
     });
     return counts;
   },[selected,perfectCount,baseParents]);
-  const breederCost=selected.reduce((sum,stat)=>sum+(baseStatCounts[stat]*breederPrices[stat]),0);
+  const ownedBaseCounts=useMemo(()=>{
+    const counts=Object.fromEntries(stats.map(stat=>[stat,0])) as Record<Stat,number>;
+    ownedBreeders.filter(b=>!b.used&&b.ivs.length===1&&stats.includes(b.ivs[0] as Stat)).forEach(b=>counts[b.ivs[0] as Stat]++);
+    return counts;
+  },[ownedBreeders]);
+  const missingStatCounts=useMemo(()=>Object.fromEntries(stats.map(stat=>[stat,Math.max(0,baseStatCounts[stat]-ownedBaseCounts[stat])])) as Record<Stat,number>,[baseStatCounts,ownedBaseCounts]);
+  const breederCost=selected.reduce((sum,stat)=>sum+(missingStatCounts[stat]*breederPrices[stat]),0);
   const genderTotal=perfectCount>1?breedCount*genderCost:0;
   const fixedTotal=braceCost+genderTotal+natureCost;
   const estimatedTotal=fixedTotal+breederCost;
   const recipes=useMemo(()=>makeRecipes(selected),[selected]);
 
   useEffect(()=>{
+    try{const box=localStorage.getItem("pokemmo-breeder-box");if(box)setOwnedBreeders(JSON.parse(box))}catch{}
     const saved=localStorage.getItem("pokemmo-breeding-settings");
     if(!saved){setSettingsLoaded(true);return;}
     try{
@@ -106,13 +115,13 @@ export function PokeMMOBreedingPage(){
         </div>)}
       </div>}</>}
       <div className="cost-controls">
-        <div className="breeder-prices"><span>1×31 breeder prices</span>{selected.map(stat=><label key={stat}>{stat}<input type="number" min="0" step="500" value={breederPrices[stat]} onChange={e=>setBreederPrices(v=>({...v,[stat]:Math.max(0,Number(e.target.value)||0)}))}/><small>× {baseStatCounts[stat]}</small></label>)}</div>
+        <div className="breeder-prices"><span>1×31 breeder prices</span>{selected.map(stat=><label key={stat}>{stat}<input type="number" min="0" step="500" value={breederPrices[stat]} onChange={e=>setBreederPrices(v=>({...v,[stat]:Math.max(0,Number(e.target.value)||0)}))}/><small>Need {baseStatCounts[stat]} · own {Math.min(baseStatCounts[stat],ownedBaseCounts[stat])} · buy {missingStatCounts[stat]}</small></label>)}</div>
         <label>Gender selection assumption <select value={genderCost} onChange={e=>setGenderCost(Number(e.target.value))}><option value={0}>Exclude</option><option value={5000}>₽5,000</option><option value={9000}>₽9,000</option><option value={21000}>₽21,000</option></select></label></div><div className="plan-summary cost-summary"><div><span>{braceCount} braces</span><strong>₽{braceCost.toLocaleString()}</strong></div><div><span>Gender selections*</span><strong>₽{genderTotal.toLocaleString()}</strong></div><div><span>{natureBreeds} Everstones {nature?`· ${natureName}`:""}</span><strong>₽{natureCost.toLocaleString()}</strong></div><div><span>Fixed subtotal</span><strong>₽{fixedTotal.toLocaleString()}</strong></div></div>
       <div className="total-summary">
-        <div><span>{baseParents} base breeders</span><strong>₽{breederCost.toLocaleString()}</strong></div>
+        <div><span>Base breeders to buy</span><strong>{selected.reduce((n,s)=>n+missingStatCounts[s],0)} / {baseParents} · ₽{breederCost.toLocaleString()}</strong></div>
         <div><span>Breeder split</span><strong>{selected.map(stat=>`${baseStatCounts[stat]}× ${stat}`).join(" · ")||"—"}</strong></div>
         <div className="grand-total"><span>Estimated total</span><strong>₽{estimatedTotal.toLocaleString()}</strong></div>
-      </div><div className="calculator-actions"><button type="button" onClick={()=>{setGenderCost(5000);setEverstoneCost(5000);setNature(false);setNatureName("Adamant");setBreederPrices(Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);localStorage.removeItem("pokemmo-breeding-settings")}}>Reset saved prices</button></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
+      </div><p className="calculator-note"><a href="/pokemon/pokemmo-breeding/box">Manage your Breeder Box →</a> Available single-31 breeders are automatically deducted from the shopping estimate.</p><div className="calculator-actions"><button type="button" onClick={()=>{setGenderCost(5000);setEverstoneCost(5000);setNature(false);setNatureName("Adamant");setBreederPrices(Object.fromEntries(stats.map(stat=>[stat,8000])) as Record<Stat,number>);localStorage.removeItem("pokemmo-breeding-settings")}}>Reset saved prices</button></div><p className="calculator-note">*Conservative estimate. Efficient chains may not need paid gender selection on every breed. Base breeder pricing can be set per IV because GTL prices vary by stat, species/egg group and gender. Your pricing assumptions are saved on this device. Poké Balls and egg moves are not included yet. Nature mode models the standard progressive nature chain and lets you set the current Everstone price.</p>
     </section>
   </PageShell>
 }
