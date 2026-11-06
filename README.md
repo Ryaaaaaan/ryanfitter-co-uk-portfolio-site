@@ -15,10 +15,10 @@ Personal portfolio for Ryan Fitter, built on the existing React / Vite codebase.
 This is an initial content/design foundation, **not a final published portfolio**.
 
 Before merge / launch:
-1. Review the user-provided CV and align job history, experience and results to verified facts.
-2. Replace the project monograms with **real project screenshots only if supplied**.
-3. Build detailed LoftyCards, LOPT and previous-role case studies with appropriately sourced claims.
-4. Agree the public contact email or enquiry channel, then replace the contact placeholder.
+1. Confirm historical employment dates and which CV results may be published. Draft copy currently follows the user's CV.
+2. Replace the text-only project monograms with **real project screenshots only if supplied and approved**.
+3. Expand LoftyCards and LoveGardening into detailed case studies with appropriately sourced claims; do not include LOPT yet.
+4. Agree the public contact email or enquiry channel before publishing it; do not expose the postcode or phone number from the CV.
 5. Confirm the hosting platform, deployment pipeline and the DNS setup for ryanfitter.co.uk.
 6. Test responsive design, accessibility, meta tags and all public links.
 

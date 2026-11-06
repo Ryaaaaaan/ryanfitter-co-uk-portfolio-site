@@ -125,3 +125,6 @@
   .rf-footer-inner > span { order: 3; width: 100%; }
 }
 @media(prefers-reduced-motion: reduce) { .rf-button { transition: none; } .rf-button:hover { transform: none; } }
+
+/* Outcome line on verified work-history cards; original imagery will be added only with permission. */
+.rf-project .rf-project-highlight { margin: 18px 0 0; border-left: 3px solid var(--rf-accent); padding: 9px 0 9px 13px; font-size: .86rem; font-weight: 650; color: var(--rf-ink); background: #f7faf8; }

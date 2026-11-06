@@ -29,24 +29,26 @@ const projects = [
   {
     number: "01",
     name: "LoftyCards",
-    category: "Retail · Shopify · E-commerce",
-    heading: "Building and operating an independent online retailer.",
-    description: "A working e-commerce business covering storefront management, an extensive trading-card catalogue, pricing, promotions and multi-channel retail operations.",
-    skills: ["Shopify", "Merchandising", "Retail operations"],
+    category: "Independent retailer · Shopify · Ongoing",
+    heading: "Owning the entire e-commerce operation, from storefront to stock.",
+    description: "I founded and operate LoftyCards, an independent UK trading-card retailer. My work spans Shopify storefront design, product catalogue management, merchandising, pricing, promotions, marketing and selling through multiple channels.",
+    skills: ["Shopify", "Product catalogues", "Merchandising", "Retail operations"],
+    highlight: "Founder-led, live e-commerce business",
     url: "https://loftycards.co.uk",
-    action: "Explore the store",
+    action: "Explore LoftyCards",
     initials: "LC",
   },
   {
     number: "02",
-    name: "LOPT",
-    category: "SaaS · Product · Retail technology",
-    heading: "Making complex product operations more manageable.",
-    description: "An evolving e-commerce management platform focused on catalogue workflows, Shopify connections, product synchronisation and automated retail operations.",
-    skills: ["Product design", "Catalogue systems", "Integrations"],
-    url: "https://getlopt.com",
-    action: "Explore LOPT",
-    initials: "LO",
+    name: "LoveGardening",
+    category: "LBS Horticulture · Magento 2 · 2019–2021",
+    heading: "Helping launch a new B2C e-commerce store from the ground up.",
+    description: "During my time at LBS Horticulture, I worked as part of a four-person team launching the Magento 2-based LoveGardening B2C website. My wider role also involved managing the B2B e-commerce site.",
+    skills: ["Magento 2", "B2C launch", "E-commerce operations", "B2B"],
+    highlight: "£200k sales in the B2C site's first six months, as recorded in my CV",
+    url: "https://www.lovegardening.com/",
+    action: "Explore LoveGardening",
+    initials: "LG",
   },
 ];
 
@@ -72,7 +74,7 @@ export function HomePage() {
             <div className="rf-hero-copy">
               <p className="rf-kicker"><span className="rf-status-dot" aria-hidden="true" /> Independent e-commerce specialist · UK / Remote</p>
               <h1 id="hero-title">Making online retail <span>work better.</span></h1>
-              <p className="rf-lede">I'm Ryan — I work across Shopify, e-commerce operations, product data and digital marketing. I combine first-hand retail experience with a practical understanding of the systems behind an online store.</p>
+              <p className="rf-lede">I'm Ryan — I work across Shopify, e-commerce operations, product data and digital marketing. I've worked with independent retailers and large product catalogues, and I bring that experience into my own live e-commerce business.</p>
               <div className="rf-actions">
                 <a href="#work" className="rf-button rf-button-primary">Explore my work <span aria-hidden="true">↗</span></a>
                 <a href="#services" className="rf-button rf-button-quiet">How I can help <span aria-hidden="true">↓</span></a>
@@ -96,7 +98,7 @@ export function HomePage() {
                 <p className="rf-section-label">01 / SELECTED WORK</p>
                 <h2 id="work-title">Built around real businesses.</h2>
               </div>
-              <p>Two ongoing projects that bring together retail, technology and day-to-day e-commerce problem solving. Detailed case studies and original screenshots will follow.</p>
+              <p>A business I run today, alongside an earlier Magento launch I helped bring to market. Both reflect hands-on retail experience, not speculative concept work.</p>
             </div>
             <div className="rf-project-grid">
               {projects.map((project) => (
@@ -110,6 +112,7 @@ export function HomePage() {
                     <h3>{project.name}</h3>
                     <p className="rf-project-heading">{project.heading}</p>
                     <p>{project.description}</p>
+                    <p className="rf-project-highlight">{project.highlight}</p>
                     <div className="rf-tag-list">
                       {project.skills.map((skill) => <span key={skill}>{skill}</span>)}
                     </div>
@@ -150,10 +153,11 @@ export function HomePage() {
               <h2 id="about-title">I don't just work on online stores. I run one.</h2>
             </div>
             <div className="rf-about-copy">
-              <p>I've worked across e-commerce, digital marketing and sales, and I now bring that experience into my own retail and software projects.</p>
-              <p>Running LoftyCards means working with the real-world details: product information, inventory, promotions, customer experience and the constant need to make better use of time.</p>
-              <p>Building LOPT adds another perspective — looking at the systems and workflows that help retailers operate more effectively.</p>
-              <p className="rf-about-note">More professional background, previous roles and project results will be added from my CV and verified work samples.</p>
+              <p>I began my e-commerce career in 2018, working across product management, digital marketing, user experience and retail operations — from independent brands to large online catalogues.</p>
+              <p>At Bensons for Beds, my e-commerce merchandising work covered the product lifecycle, pricing, promotions and enrichment across more than 25,000 SKUs, using tools including Akeneo PIM and BigCommerce.</p>
+              <p>At Style Cafe, I managed two Shopify stores and worked on conversion optimisation and Google Ads. Earlier, I led a website redesign and worked on SEO and email performance at Lancashire Textiles.</p>
+              <p>Today, running LoftyCards keeps me close to the practical challenges retailers face every day: accurate product data, inventory, customer experience, promotions and commercial growth.</p>
+              <p className="rf-about-note">Experience includes Shopify, Magento 2, BigCommerce, Akeneo, Linnworks, Google Analytics, Google Ads and Excel. Historic project results are drawn from my CV; detailed case studies will use approved evidence and original screenshots.</p>
             </div>
           </div>
         </section>
