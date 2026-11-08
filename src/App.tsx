@@ -1,4 +1,5 @@
 import {HomePage} from "./pages/HomePage";
+import {AdminPage} from "./pages/AdminPage";
 import {WorkPage} from "./pages/WorkPage";
 import {PokemonPage} from "./pages/PokemonPage";
 import {PokemonToolPage} from "./pages/PokemonToolPage";
@@ -20,6 +21,7 @@ const pokemonTools:Record<string,[string,string]>={
 };
 
 export function App(){
+  if(path==="/admin"||path.startsWith("/admin/")) return <AdminPage/>;
   if(path==="/pokemon") return <PokemonPage/>;
   if(path==="/pokemon/pokemmo-breeding") return <PokeMMOBreedingPage/>;
   if(path==="/pokemon/pokemmo-breeding/box") return <PokeMMOBreedingTrackerPage/>;
