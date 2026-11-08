@@ -212,8 +212,7 @@ def create_app() -> Flask:
 
     @app.get("/admin")
     @app.get("/admin/")
-    @app.get("/admin/<path:unused>")
-    def dashboard(unused: str = ""):
+    def dashboard():
         if not signed_in():
             return redirect("/admin/login", 302)
         if not index_file.is_file():
