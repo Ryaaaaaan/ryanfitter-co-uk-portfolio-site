@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "title": "Ryan Fitter",
+  "description": "Ryan Fitter, some guy @ LoftyCards",
+  "theme": {
+    "background": "#f7f8f3",
+    "text": "#172520",
+    "muted": "#52615a",
+    "accent": "#24634b",
+    "panel": "#fffef9",
+    "font": "sans",
+    "contentWidth": 1180
+  },
+  "header": {
+    "enabled": false,
+    "brand": "Ryan Fitter",
+    "links": []
+  },
+  "footer": {
+    "enabled": false,
+    "text": "Ryan Fitter",
+    "links": []
+  },
+  "projects": [],
+  "sections": [
+    {
+      "id": "intro",
+      "type": "text",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 48,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "heading": "Ryan Fitter",
+      "body": "some guy @ LoftyCards",
+      "buttons": []
+    }
+  ]
+}

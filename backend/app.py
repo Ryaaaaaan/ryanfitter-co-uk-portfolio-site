@@ -14,6 +14,7 @@ import os
 import secrets
 import time
 from datetime import timedelta
+from backend.cms import ContentStore
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
@@ -62,6 +63,8 @@ def create_app() -> Flask:
     build_dir = Path(os.environ.get("DIST_DIR", "/opt/ryanfitter-portfolio/dist"))
     index_file = build_dir / "index.html"
 
+    store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
+
     app.secret_key = secret
     app.config.update(
         SESSION_COOKIE_NAME="__Host-ryanfitter_admin",
@@ -94,7 +97,8 @@ def create_app() -> Flask:
                 "default-src 'self'; base-uri 'self'; "
                 "object-src 'none'; frame-ancestors 'none'; "
                 "script-src 'self'; style-src 'self'; "
-                "connect-src 'self'; img-src 'self' data:; form-action 'self'"
+                "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
+                "style-src-attr 'unsafe-inline'"
             )
         return response
 
@@ -194,8 +198,38 @@ def create_app() -> Flask:
             "authenticated": True,
             "email": session.get("email") or "",
             "csrf": session["csrf"],
-            "features": {"jobs": "planned", "tasks": "planned", "cms": "planned"},
+            "features": {"jobs": "planned", "tasks": "planned", "cms": "ready"},
         })
+
+    @app.get("/content/site.json")
+    def published_content():
+        response = jsonify(store.read()["published"])
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    @app.route("/admin/api/cms", methods=["GET", "PUT"])
+    @app.post("/admin/api/cms/publish")
+    def cms_content():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify(store.read())
+        csrf = request.headers.get("X-CSRF-Token", "")
+        if (not csrf or not hmac.compare_digest(csrf, session.get("csrf", ""))
+                or request.headers.get("Origin") != origin):
+            abort(403, description="Invalid request token or origin")
+        payload = request.get_json()
+        if not isinstance(payload, dict) or type(payload.get("revision")) is not int:
+            abort(400, description="A content revision is required")
+        try:
+            if request.path.endswith("/publish"):
+                return jsonify(store.publish(payload["revision"]))
+            return jsonify(store.save(payload.get("document"), payload["revision"]))
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
 
     @app.post("/admin/logout")
     def logout():
@@ -212,6 +246,7 @@ def create_app() -> Flask:
 
     @app.get("/admin")
     @app.get("/admin/")
+    @app.get("/admin/cms")
     def dashboard():
         if not signed_in():
             return redirect("/admin/login", 302)

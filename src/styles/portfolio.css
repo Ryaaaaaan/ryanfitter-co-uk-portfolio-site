@@ -176,3 +176,17 @@
   .portfolio-next-project{margin-top:65px}
 }
 @media(prefers-reduced-motion:reduce){.portfolio-button,.portfolio-project{transition:none}}
+
+.cms-site{background:var(--pf-bg);color:var(--pf-ink)}
+.cms-site .portfolio-container{width:min(var(--cms-width,1180px),calc(100% - 48px))}
+.cms-site .portfolio-header{background:var(--pf-bg)}
+.cms-section h1,.cms-section h2,.cms-section p{white-space:pre-line}
+.cms-section .portfolio-hero{padding-top:0;padding-bottom:0}
+.cms-section-expertise{background:var(--pf-soft)}
+.cms-section-contact{background:var(--pf-ink);color:var(--pf-bg)}
+.cms-section-contact h2{font-size:clamp(2.5rem,6vw,5rem);line-height:1.1}
+.cms-section-contact h2 em{color:var(--pf-bg)}
+.cms-section-contact .portfolio-button-primary{background:var(--pf-bg);color:var(--pf-ink)!important}
+.cms-text h1{font-size:clamp(2rem,5vw,4rem);letter-spacing:-.05em;margin-bottom:8px}
+.cms-text p{font-size:1.15em}.cms-text .portfolio-actions{justify-content:inherit}
+.cms-section .portfolio-hero-intro p,.cms-section .portfolio-about-copy p,.cms-section .portfolio-project>p,.cms-section .portfolio-section-heading>p{font-size:1em}

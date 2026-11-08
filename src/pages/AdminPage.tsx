@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import "../styles/admin.css";
+import {CmsEditor} from "../cms/Editor";
 
 type Session = {
   authenticated: boolean;
@@ -51,6 +52,7 @@ export function AdminPage(){
     return ()=>controller.abort();
   },[]);
 
+  const cms=window.location.pathname.replace(/\/+$/, "")==="/admin/cms";
   return <div className="admin-app">
     {status==="ready"&&identity?<>
       <aside className="admin-sidebar">
@@ -60,7 +62,7 @@ export function AdminPage(){
           <a href="/admin" className="admin-nav-active" aria-current="page">Overview</a>
           <span className="admin-nav-inactive">Applications <small>SOON</small></span>
           <span className="admin-nav-inactive">Work board <small>SOON</small></span>
-          <span className="admin-nav-inactive">Portfolio CMS <small>SOON</small></span>
+          <a href="/admin/cms">Portfolio CMS</a>
         </nav>
         <div className="admin-sidebar-bottom">
           <a href="/" className="admin-back">← Public portfolio</a>
@@ -76,14 +78,15 @@ export function AdminPage(){
       </aside>
       <main className="admin-main" id="main">
         <div className="admin-heading">
-          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>Overview</h1>
+          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":"Overview"}</h1>
           <p>A quiet place for your applications, projects and website content.</p></div>
           <span className="admin-secure">● Protected by Cognito</span>
         </div>
-        <div className="admin-notice"><strong>Foundation installed.</strong> Your sign-in and private dashboard shell are ready for deployment. Data storage and editing tools are not enabled yet.</div>
+        {cms?<CmsEditor csrf={identity.csrf}/>:<>
+        <div className="admin-notice"><strong>Foundation installed.</strong> Your private dashboard is ready. Open Portfolio CMS to build and publish your homepage. Applications and the work board are still planned.</div>
         <div className="admin-module-grid">
           {modules.map(module=><section className="admin-module" key={module.name}>
-            <div className="admin-module-top"><span className="admin-module-symbol" aria-hidden="true">{module.icon}</span><span className="admin-coming">PLANNED</span></div>
+            <div className="admin-module-top"><span className="admin-module-symbol" aria-hidden="true">{module.icon}</span><span className="admin-coming">{module.name==="Portfolio CMS"?"READY":"PLANNED"}</span></div>
             <span className="admin-overline">{module.eyebrow}</span>
             <h2>{module.name}</h2>
             <p>{module.description}</p>
@@ -91,9 +94,11 @@ export function AdminPage(){
           </section>)}
         </div>
         <section className="admin-next">
-          <div><span className="admin-overline">NEXT MILESTONE</span><h2>Choose what to build first.</h2></div>
-          <p>The dashboard is intentionally lightweight. We can add the CMS, task board and application tracker one module at a time, without affecting the public portfolio.</p>
+          <div><span className="admin-overline">NEXT MILESTONE</span><h2>Build your website.</h2></div>
+          <p>Edit text and styling, add components, save drafts and publish from the Portfolio CMS.</p>
         </section>
+        <a href="/admin/cms" className="admin-sign-in">Open Portfolio CMS →</a>
+        </>}
       </main>
     </>:<main className="admin-entry" id="main">
       <a href="/" className="admin-brand">ryan<span>.</span>fitter</a>

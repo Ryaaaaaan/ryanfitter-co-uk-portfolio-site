@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tar -czf personal-site-bundle.tar.gz dist backend deploy docs/PRIVATE_DASHBOARD.md
+          tar -czf personal-site-bundle.tar.gz dist backend src/cms deploy docs/PRIVATE_DASHBOARD.md docs/PORTFOLIO_CMS.md
           sha256sum personal-site-bundle.tar.gz > personal-site-bundle.tar.gz.sha256
       - uses: actions/upload-artifact@v4
         with:

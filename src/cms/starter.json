@@ -1,0 +1,362 @@
+{
+  "version": 1,
+  "title": "Ryan Fitter | E-commerce & Digital Merchandising",
+  "description": "E-commerce, digital merchandising and marketing.",
+  "theme": {
+    "background": "#f7f8f3",
+    "text": "#172520",
+    "muted": "#52615a",
+    "accent": "#24634b",
+    "panel": "#fffef9",
+    "font": "sans",
+    "contentWidth": 1180
+  },
+  "header": {
+    "enabled": true,
+    "brand": "ryan.fitter",
+    "links": [
+      {
+        "label": "Work",
+        "href": "/#work"
+      },
+      {
+        "label": "Expertise",
+        "href": "/#expertise"
+      },
+      {
+        "label": "About",
+        "href": "/#about"
+      },
+      {
+        "label": "Get in touch",
+        "href": "/#contact"
+      }
+    ]
+  },
+  "footer": {
+    "enabled": true,
+    "text": "Ryan Fitter · E-commerce. Merchandising. Digital.",
+    "links": [
+      {
+        "label": "LinkedIn",
+        "href": "https://www.linkedin.com/in/ryaaan/"
+      }
+    ]
+  },
+  "projects": [
+    {
+      "slug": "loftycards",
+      "number": "01",
+      "client": "LoftyCards",
+      "descriptor": "Independent retail / Shopify",
+      "date": "2025 — Present",
+      "title": "Launching and running a specialist online retailer.",
+      "summary": "From an initial catalogue of thousands of products to the day-to-day commercial decisions behind an independent trading card business.",
+      "tools": [
+        "Shopify",
+        "Product merchandising",
+        "SEO",
+        "Google Ads",
+        "Email marketing",
+        "eBay"
+      ],
+      "facts": [
+        {
+          "value": "8,000+",
+          "label": "listings at launch"
+        },
+        {
+          "value": "~1 month",
+          "label": "from build to launch"
+        },
+        {
+          "value": "1,000+",
+          "label": "weekly Google impressions achieved"
+        }
+      ],
+      "challenge": "Build a credible, searchable storefront for a product range with a large number of individual variants, while managing the realities of running a small retail business.",
+      "work": [
+        "Built and launched the Shopify storefront, initially publishing over 8,000 product listings.",
+        "Established distribution relationships and expanded the product range.",
+        "Managed product data, pricing, stock, onsite merchandising, promotions and multichannel selling.",
+        "Improved organic search visibility and developed automation-led processes for repetitive catalogue work."
+      ],
+      "result": "Launched the store in approximately one month and grew Google Search impressions from a few hundred per month to more than 1,000 per week, while building a functioning independent retail operation.",
+      "links": [
+        {
+          "label": "Visit LoftyCards",
+          "href": "https://loftycards.co.uk"
+        }
+      ]
+    },
+    {
+      "slug": "bensons-for-beds",
+      "number": "02",
+      "client": "Bensons for Beds",
+      "descriptor": "National retail / Digital merchandising",
+      "date": "2024 — 2026",
+      "title": "Keeping a large retail catalogue clear, accurate and easy to shop.",
+      "summary": "Product data, promotions and onsite merchandising across a national retailer's catalogue of more than 25,000 SKUs.",
+      "tools": [
+        "BigCommerce",
+        "Akeneo PIM",
+        "Google Analytics",
+        "Tableau",
+        "Excel",
+        "Onsite search"
+      ],
+      "facts": [
+        {
+          "value": "25,000+",
+          "label": "SKUs across the catalogue"
+        },
+        {
+          "value": "Weekly",
+          "label": "promotional cycles"
+        },
+        {
+          "value": "2+ years",
+          "label": "e-commerce merchandising"
+        }
+      ],
+      "challenge": "Help customers find and understand products while keeping a large catalogue's content, prices and promotions accurate.",
+      "work": [
+        "Managed product lifecycle details, product information, pricing and promotional merchandising.",
+        "Enriched attributes, descriptions and website content through Akeneo PIM.",
+        "Worked on product detail pages, category structures, site navigation and search filters.",
+        "Coordinated promotions and supported launches alongside marketing, PR and purchasing teams."
+      ],
+      "result": "Supported the day-to-day quality, discoverability and commercial presentation of a catalogue containing more than 25,000 SKUs.",
+      "links": [
+        {
+          "label": "Visit Bensons for Beds",
+          "href": "https://www.bensonsforbeds.co.uk"
+        }
+      ],
+      "note": "This describes my work during my employment. The live website and its current implementation may have changed since then."
+    },
+    {
+      "slug": "lbs-horticulture",
+      "number": "03",
+      "client": "LBS Horticulture",
+      "descriptor": "B2B and B2C / Magento 2",
+      "date": "2019 — 2021",
+      "title": "Growing established B2B commerce while launching B2C.",
+      "summary": "Worked across a business-to-business website and a new consumer-facing Magento 2 store, with a focus on content, SEO and usability.",
+      "tools": [
+        "Magento 2",
+        "B2B e-commerce",
+        "B2C launch",
+        "On-page SEO",
+        "Website UX"
+      ],
+      "facts": [
+        {
+          "value": "£1.1m → £1.4m",
+          "label": "B2B annual revenue, 2019–20"
+        },
+        {
+          "value": "£200k",
+          "label": "B2C revenue in first six months"
+        },
+        {
+          "value": "4 people",
+          "label": "on the B2C launch team"
+        }
+      ],
+      "challenge": "Maintain and improve an established B2B online operation while helping a small team introduce a separate B2C shopping experience.",
+      "work": [
+        "Oversaw day-to-day B2B e-commerce website activities, product content and merchandising.",
+        "Worked within a four-person team to launch a Magento 2 B2C store.",
+        "Improved onsite usability, website performance and organic search visibility.",
+        "Maintained product pages and content across the B2B and B2C channels."
+      ],
+      "result": "The B2B channel recorded approximately £1.1m revenue in 2019 and £1.4m in 2020. The new B2C website generated £200,000 in its first six months. These are business and team outcomes, not solely my personal results.",
+      "links": [
+        {
+          "label": "LBS Horticulture",
+          "href": "https://lbshorticulture.co.uk"
+        },
+        {
+          "label": "LoveGardening",
+          "href": "https://lovegardening.com"
+        }
+      ],
+      "note": "These sites are included as references to the businesses I worked on; their live content and designs may have changed since my involvement."
+    }
+  ],
+  "sections": [
+    {
+      "id": "introduction",
+      "type": "hero",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "eyebrow": "Open to remote opportunities & freelance projects",
+      "index": "01 / INTRODUCTION",
+      "heading": "Good e-commerce",
+      "emphasis": "is in the details.",
+      "body": "Hi, I'm Ryan. I work across e-commerce, digital merchandising and marketing — making online stores easier to shop, manage and grow.",
+      "caption": "UK based · 8+ years in online retail",
+      "buttons": [
+        {
+          "label": "Explore my work",
+          "href": "#work"
+        },
+        {
+          "label": "Work with me",
+          "href": "#contact"
+        }
+      ]
+    },
+    {
+      "id": "proof",
+      "type": "stats",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "items": [
+        {
+          "value": "25,000+",
+          "label": "SKUs merchandised at Bensons for Beds"
+        },
+        {
+          "value": "8,000+",
+          "label": "products on LoftyCards at launch"
+        },
+        {
+          "value": "£200k",
+          "label": "B2C launch revenue in six months — team result"
+        },
+        {
+          "value": "8+ years",
+          "label": "across e-commerce and marketing"
+        }
+      ]
+    },
+    {
+      "id": "work",
+      "type": "projects",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "eyebrow": "01 / SELECTED WORK",
+      "heading": "Real work. Real retail.",
+      "body": "From getting a new Shopify store off the ground to managing the details behind established e-commerce operations.",
+      "linkLabel": "Case study",
+      "note": "Projects describe my contribution during the periods shown. Current websites may have evolved since then."
+    },
+    {
+      "id": "expertise",
+      "type": "expertise",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "eyebrow": "02 / WHAT I DO",
+      "heading": "The operational side.\nThe creative side.",
+      "body": "I like the space between product data, commercial decisions and the customer experience — where small improvements make a noticeable difference.",
+      "items": [
+        {
+          "heading": "Online merchandising",
+          "body": "Product discovery, categories, search, promotions, pricing and the everyday details of a well-run storefront."
+        },
+        {
+          "heading": "Catalogues & PIM",
+          "body": "Product enrichment, attributes, data quality and practical workflows for large, complex product ranges."
+        },
+        {
+          "heading": "Growth & optimisation",
+          "body": "SEO, conversion-focused improvements, email, paid marketing and making sense of performance data."
+        }
+      ],
+      "skills": [
+        "Shopify",
+        "Magento 2",
+        "BigCommerce",
+        "Akeneo PIM",
+        "Product data",
+        "Onsite merchandising",
+        "Digital trading",
+        "SEO",
+        "Google Analytics",
+        "Promotions and pricing",
+        "Email marketing",
+        "Catalogue operations"
+      ]
+    },
+    {
+      "id": "about",
+      "type": "about",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "eyebrow": "03 / A LITTLE ABOUT ME",
+      "heading": "Hands-on by nature.",
+      "paragraphs": [
+        "I started in e-commerce through an apprenticeship in 2018. Since then, I've worked with independent retailers and national businesses across Magento, Shopify, BigCommerce and product information systems.",
+        "I've helped launch consumer stores, managed large retail catalogues and worked across digital marketing, merchandising and website operations. I now run my own online retail business, LoftyCards, alongside pursuing new opportunities.",
+        "I'm interested in remote e-commerce roles and freelance projects where I can contribute practical experience and make things work better."
+      ],
+      "buttons": [
+        {
+          "label": "Full career history on LinkedIn",
+          "href": "https://www.linkedin.com/in/ryaaan/"
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "type": "contact",
+      "enabled": true,
+      "style": {
+        "background": "",
+        "text": "",
+        "accent": "",
+        "padding": 80,
+        "fontSize": 16,
+        "align": "left"
+      },
+      "eyebrow": "04 / LET'S TALK",
+      "heading": "A project to improve?",
+      "emphasis": "A role to fill?",
+      "body": "Whether you're hiring or need a hand with your e-commerce operation, I'd be glad to hear about it.",
+      "email": "ryan.fitter@outlook.com",
+      "buttons": [
+        {
+          "label": "Get in touch",
+          "href": "mailto:ryan.fitter@outlook.com?subject=E-commerce%20enquiry"
+        }
+      ]
+    }
+  ]
+}
