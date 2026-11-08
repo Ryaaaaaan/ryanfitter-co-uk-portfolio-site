@@ -5,7 +5,9 @@ check triggers `Deploy personal website to AWS`. Manual runs are also available
 in GitHub Actions. No AWS keys, S3 bucket or additional server are required.
 
 The role trusts only this repository's main branch through the existing GitHub
-OIDC provider. It grants `ssm:SendCommand` for AWS-RunShellScript on only
+OIDC provider. The exact subject includes the verified immutable owner ID 24569809
+and repository ID 1398769934 as emitted by GitHub; name-only subjects do not match
+this repository. It grants `ssm:SendCommand` for AWS-RunShellScript on only
 `i-0266a151d81b9a47a`, plus `ssm:GetCommandInvocation` in eu-west-2 to collect
 results (that read operation does not support resource-level scoping).
 

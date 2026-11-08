@@ -20,7 +20,7 @@
               "Condition": {
                 "StringEquals": {
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                  "token.actions.githubusercontent.com:sub": "repo:Ryaaaaaan/ryanfitter-co-uk-portfolio-site:ref:refs/heads/main"
+                  "token.actions.githubusercontent.com:sub": "repo:Ryaaaaaan@24569809/ryanfitter-co-uk-portfolio-site@1398769934:ref:refs/heads/main"
                 }
               }
             }
