@@ -1,0 +1,79 @@
+name: Deploy personal website to AWS
+on:
+  workflow_run:
+    workflows: ["Check portfolio and dashboard foundation"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-website-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-west-2
+      INSTANCE_ID: i-0266a151d81b9a47a
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify build and backend before contacting AWS
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          python -m pip install -r backend/requirements.txt
+          python -m unittest discover -s backend/tests -v
+          bash -n deploy/install-cms.sh deploy/github-remote.sh
+      - name: Obtain short-lived AWS deployment credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::746364933861:role/RyanFitterPortfolioGitHubDeploy
+          aws-region: eu-west-2
+          allowed-account-ids: '746364933861'
+          role-session-name: personal-site-${{ github.run_id }}
+          role-duration-seconds: 3600
+      - name: Deploy through Systems Manager and collect result
+        run: python deploy/send-deployment.py
+      - name: Verify public authentication boundaries and tools
+        run: |
+          python - <<'PY'
+          import urllib.request, urllib.error, json
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args): return None
+          client = urllib.request.build_opener(NoRedirect)
+          for path, expected in [('/', 200), ('/pokemon', 200), ('/admin', 302), ('/admin/api/session', 401), ('/admin/api/cms', 401)]:
+              try: response = client.open('https://ryanfitter.co.uk'+path, timeout=30)
+              except urllib.error.HTTPError as error: response = error
+              assert response.code == expected, (path, response.code)
+              if path.startswith('/admin'):
+                  assert 'no-store' in response.headers.get('Cache-Control', '')
+              print(path, response.code)
+          with client.open('https://ryanfitter.co.uk/content/site.json', timeout=30) as response:
+              assert json.load(response)['version'] == 1
+          try: response = client.open('https://trading.ryanfitter.co.uk/', timeout=30)
+          except urllib.error.HTTPError as error: response = error
+          assert response.code in (200, 302, 303), response.code
+          print('Trading Lab responds:', response.code)
+          PY
