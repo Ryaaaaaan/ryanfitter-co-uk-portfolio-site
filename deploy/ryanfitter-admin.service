@@ -1,0 +1,23 @@
+[Unit]
+Description=Ryan Fitter private portfolio dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ryanfitter-admin
+Group=ryanfitter-admin
+WorkingDirectory=/opt/ryanfitter-portfolio
+EnvironmentFile=/etc/ryanfitter-admin.env
+ExecStart=/opt/ryanfitter-portfolio/.venv/bin/gunicorn --bind 127.0.0.1:8787 --workers 2 --timeout 30 backend.app:app
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadOnlyPaths=/opt/ryanfitter-portfolio/dist
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
