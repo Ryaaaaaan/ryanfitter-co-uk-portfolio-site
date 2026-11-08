@@ -120,7 +120,7 @@
 .portfolio-next-project strong{font-size:24px;letter-spacing:-.04em;margin-left:auto}
 .portfolio-next-project span:last-child{font-size:22px;color:var(--pf-accent)}
 @media(max-width:950px){
-  .portfolio-container{width:min(100% - 42px,1180px)}
+  .portfolio-container{width:min(calc(100% - 42px),1180px)}
   .portfolio-hero{padding-top:75px;padding-bottom:80px}
   .portfolio-hero-bottom{align-items:start;flex-direction:column}
   .portfolio-actions{justify-content:flex-start}
