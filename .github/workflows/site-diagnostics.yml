@@ -1,0 +1,27 @@
+name: Check live hosting and dashboard route
+on:
+  push:
+    branches: [feat/dashboard-deployment-readiness]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  domain-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve DNS and inspect public site
+        shell: bash
+        run: |
+          set +e
+          echo "=== Domain DNS ==="
+          for name in ryanfitter.co.uk trading.ryanfitter.co.uk admin.getlopt.com; do
+            echo "Domain: $name"
+            dig +short "$name" A
+            dig +short "$name" CNAME
+          done
+          echo "=== HTTPS responses ==="
+          for url in https://ryanfitter.co.uk/ https://ryanfitter.co.uk/admin https://trading.ryanfitter.co.uk/; do
+            echo "URL: $url"
+            curl -k -L -I --max-time 15 --max-redirs 3 --silent --show-error "$url" | head -25
+            echo "Exit: ${PIPESTATUS[0]}"
+          done
