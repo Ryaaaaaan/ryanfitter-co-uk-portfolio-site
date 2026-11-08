@@ -12,6 +12,7 @@ import hmac
 import logging
 import os
 import secrets
+import time
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
@@ -85,6 +86,7 @@ def create_app() -> Flask:
     def security_headers(response):
         if request.path.startswith("/admin"):
             response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Robots-Tag"] = "noindex, nofollow"
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["Referrer-Policy"] = "no-referrer"
@@ -109,6 +111,7 @@ def create_app() -> Flask:
         session["oauth_state"] = state
         session["oauth_nonce"] = nonce
         session["oauth_verifier"] = verifier
+        session["oauth_started"] = int(time.time())
         params = urlencode({
             "response_type": "code",
             "client_id": client_id,
@@ -128,8 +131,10 @@ def create_app() -> Flask:
         expected_state = session.pop("oauth_state", "")
         expected_nonce = session.pop("oauth_nonce", "")
         verifier = session.pop("oauth_verifier", "")
+        started = session.pop("oauth_started", 0)
         if (not code or not state or not verifier or not expected_nonce
-                or not expected_state or not hmac.compare_digest(state, expected_state)):
+                or not expected_state or not hmac.compare_digest(state, expected_state)
+                or not isinstance(started, int) or not (0 <= int(time.time()) - started <= 600)):
             session.clear()
             abort(400, description="Invalid or expired sign-in attempt")
 
