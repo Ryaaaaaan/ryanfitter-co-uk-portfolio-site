@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /pokemon
+Disallow: /admin
 Sitemap: https://ryanfitter.co.uk/sitemap.xml
