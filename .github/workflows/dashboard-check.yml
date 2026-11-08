@@ -8,6 +8,8 @@ on:
       - "package.json"
       - "index.html"
       - ".github/workflows/dashboard-check.yml"
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
