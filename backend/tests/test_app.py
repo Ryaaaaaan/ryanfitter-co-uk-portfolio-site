@@ -30,6 +30,8 @@ class DashboardAuthTest(unittest.TestCase):
         self.addCleanup(self.env.stop)
         self.app = create_app()
         self.app.testing = True
+        # Production accepts only ryanfitter.co.uk. Unit tests use localhost.
+        self.app.config["TRUSTED_HOSTS"] = ["localhost", "ryanfitter.co.uk"]
         self.client = self.app.test_client()
 
     def test_anonymous_admin_redirect_and_api_deny(self):
