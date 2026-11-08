@@ -7,7 +7,7 @@ import {PokeMMOBreedingPage} from "./pages/PokeMMOBreedingPage";
 import {PokeMMOBreedingTrackerPage} from "./pages/PokeMMOBreedingTrackerPage";
 
 const path=window.location.pathname.replace(/\/+$/,"")||"/";
-if(path==="/pokemon"||path.startsWith("/pokemon/")){
+if(path==="/admin"||path.startsWith("/admin/")||path==="/pokemon"||path.startsWith("/pokemon/")){
   const pokemonTheme=localStorage.getItem("pokemon-theme");
   if(pokemonTheme==="light"||pokemonTheme==="dark") document.documentElement.dataset.theme=pokemonTheme;
   // These utility pages remain unlisted while the public portfolio becomes indexable.
