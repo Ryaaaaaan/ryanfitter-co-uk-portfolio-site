@@ -1,13 +1,16 @@
 import {HomePage} from "./pages/HomePage";
+import {WorkPage} from "./pages/WorkPage";
 import {PokemonPage} from "./pages/PokemonPage";
 import {PokemonToolPage} from "./pages/PokemonToolPage";
 import {PokeMMOBreedingPage} from "./pages/PokeMMOBreedingPage";
 import {PokeMMOBreedingTrackerPage} from "./pages/PokeMMOBreedingTrackerPage";
 
 const path=window.location.pathname.replace(/\/+$/,"")||"/";
-if(path.startsWith("/pokemon")){
+if(path==="/pokemon"||path.startsWith("/pokemon/")){
   const pokemonTheme=localStorage.getItem("pokemon-theme");
   if(pokemonTheme==="light"||pokemonTheme==="dark") document.documentElement.dataset.theme=pokemonTheme;
+  // These utility pages remain unlisted while the public portfolio becomes indexable.
+  document.querySelector('meta[name="robots"]')?.setAttribute("content","noindex,nofollow");
 }
 
 const pokemonTools:Record<string,[string,string]>={
@@ -22,5 +25,6 @@ export function App(){
   if(path==="/pokemon/pokemmo-breeding/box") return <PokeMMOBreedingTrackerPage/>;
   const tool=pokemonTools[path];
   if(tool) return <PokemonToolPage title={tool[0]} description={tool[1]}/>;
+  if(path.startsWith("/work/")) return <WorkPage slug={path.substring("/work/".length)}/>;
   return <HomePage/>;
 }
