@@ -299,7 +299,7 @@ try{
   ]);
   assert.equal(workTasks[0].status,'in_progress');
   await page.goto('http://127.0.0.1:5173/admin/job-matches',{waitUntil:'networkidle'});
-  await page.getByRole('heading',{name:'Job matches'}).waitFor();
+  await page.getByRole('heading',{name:'Job matches',level:2}).waitFor();
   assert.equal(await page.getByText('International contractor — review before applying').count(),1);
   await page.getByLabel('Work arrangement').selectOption('employment');
   assert.equal(await page.getByText('No matching vacancies').count(),1);
