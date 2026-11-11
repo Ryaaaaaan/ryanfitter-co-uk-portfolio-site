@@ -154,6 +154,36 @@ class ContentValidationTest(unittest.TestCase):
             mutate(data)
             with self.assertRaises(ValueError): validate(data)
 
+    def test_legacy_theme_preset_label_is_stripped_without_losing_draft(self):
+        # A still-open older editor tab could contain theme.name='Dark'.
+        # Saving that page must retain all user edits and the chosen colours.
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContentStore(directory + '/cms.sqlite3')
+            draft = copy.deepcopy(STARTER)
+            draft['theme'].update(name='Dark', background='#151e1d', text='#ecf2ef')
+            draft['sections'][0]['heading'] = 'My unsaved heading'
+            result = store.save(draft, 0)
+            self.assertEqual(result['draft']['sections'][0]['heading'], 'My unsaved heading')
+            self.assertEqual(result['draft']['theme']['background'], '#151e1d')
+            self.assertNotIn('name', result['draft']['theme'])
+            self.assertNotEqual(result['published'], result['draft'])
+            saved = store.publish(1)
+            self.assertEqual(saved['published'], result['draft'])
+
+    def test_unknown_theme_properties_still_rejected(self):
+        for name in ('Custom theme', 'My own name', ''):
+            data = copy.deepcopy(STARTER)
+            data['theme']['name'] = name
+            with tempfile.TemporaryDirectory() as directory:
+                with self.assertRaisesRegex(ValueError, 'Unknown fields in theme'):
+                    ContentStore(directory + '/cms.sqlite3').save(data, 0)
+        data = copy.deepcopy(STARTER)
+        data['theme']['dangerous'] = 'ignored'
+        data['theme']['name'] = 'Forest'
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(ValueError, 'Unknown fields in theme'):
+                ContentStore(directory + '/cms.sqlite3').save(data, 0)
+
     def test_draft_publish_restart_and_conflict(self):
         with tempfile.TemporaryDirectory() as directory:
             path = directory + '/cms.sqlite3'
