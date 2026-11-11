@@ -313,7 +313,9 @@ export function CmsEditor({csrf}:{csrf:string}){
  const frameStyle={'--cms-live-width':designWidth+'px',zoom:previewZoom} as CSSProperties;
  const previewLayout=designWidth<=540?'mobile':designWidth<=900?'tablet':'desktop';
  const studioStyle={'--vc-rail-width':(showRail?railWidth:0)+'px',
-   '--vc-inspector-width':(showInspector?inspectorWidth:0)+'px'} as CSSProperties;
+   '--vc-inspector-width':(showInspector?inspectorWidth:0)+'px',
+   '--vc-left-grip':(showRail?8:0)+'px',
+   '--vc-right-grip':(showInspector?8:0)+'px'} as CSSProperties;
 
  function inspect(key:string){select(key);}
  function onCanvasKey(e:ReactKeyboardEvent<HTMLDivElement>,id:string){
