@@ -28,6 +28,7 @@ STYLE_OVERRIDES = {
     'statValueSize': (0, 110), 'statLabelSize': (0, 50),
     'headingColor': 'color', 'bodyColor': 'color', 'eyebrowColor': 'color',
     'emphasisColor': 'color', 'mutedColor': 'color',
+    'panelColor': 'color', 'borderColor': 'color',
 }
 LAYOUT_OVERRIDES = {
     'columns': (0, 12), 'gap': (-1, 160),
