@@ -44,12 +44,14 @@ def check_section_overrides(section):
             raise ValueError('Unknown section layout fields')
         for field, value in layout.items():
             if field == 'verticalAlign':
-                if value not in LAYOUT_ALIGNS:
+                if not isinstance(value, str) or value not in LAYOUT_ALIGNS:
                     raise ValueError('Unknown vertical alignment')
             else:
                 bounded(value, field, LAYOUT_OVERRIDES[field])
                 if field in ('columns', 'gap', 'split', 'copyMaxWidth') and type(value) is not int:
                     raise ValueError(f'{field} must be an integer')
+    if not isinstance(section.get('style'), dict):
+        raise ValueError('Section style must be an object')
     for field, value in section['style'].items():
         if field in STYLE_OVERRIDES:
             bounded(value, field, STYLE_OVERRIDES[field])
