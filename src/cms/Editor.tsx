@@ -324,7 +324,11 @@ export function CmsEditor({csrf}:{csrf:string}){
        if(!response.ok)throw Error(data.error||'Save failed. Reload if this draft changed in another tab.');
        return data;
      };
-     let result=await request('/admin/api/cms',{document:draft,revision},'PUT');
+     // Older editor versions accidentally added a preset 'name' to theme.
+     // Do not discard any real unsaved content while cleaning this label.
+     const document=clone(draft);
+     delete (document.theme as typeof document.theme&{name?:string}).name;
+     let result=await request('/admin/api/cms',{document,revision},'PUT');
      receive(result);
      if(publish){result=await request('/admin/api/cms/publish',{revision:result.revision},'POST');receive(result);}
      setUndoSite(null);setMessage(publish?'Published successfully. Your live site now reflects the preview.':'Draft saved. The public website is unchanged.');
@@ -626,7 +630,8 @@ export function CmsEditor({csrf}:{csrf:string}){
               {name:'Forest',background:'#f7f8f3',text:'#172520',muted:'#52615a',accent:'#24634b',panel:'#fffef9'},
               {name:'Slate',background:'#f2f4f7',text:'#17253c',muted:'#596575',accent:'#2457a7',panel:'#ffffff'},
               {name:'Dark',background:'#151e1d',text:'#ecf2ef',muted:'#a9b7b0',accent:'#66cf9e',panel:'#22302c'}
-            ].map(preset=><button type="button" key={preset.name} onClick={()=>edit({...draft,theme:{...draft.theme,...preset}})}>{preset.name}</button>)}
+            ].map(({name,...colours})=><button type="button" key={name}
+              onClick={()=>edit({...draft,theme:{...draft.theme,...colours}})}>{name}</button>)}
           </div>}
           <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='projects'?<>

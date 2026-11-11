@@ -19,6 +19,8 @@ try{
     const method=r.request().method();
     if(method==='PUT'){
       const {document,revision:expected}=r.request().postDataJSON();
+      assert(!Object.hasOwn(document.theme,'name'),
+        'Theme preset display name must never be submitted as site content');
       assert.equal(expected,revision,'Save must use latest revision');
       persistedDraft=structuredClone(document);
       revision+=1;saves+=1;
@@ -106,6 +108,19 @@ try{
   assert.equal(await heroSection.evaluate(el=>getComputedStyle(el).backgroundColor),
     'rgba(0, 0, 0, 0)');
   await page.getByRole('button',{name:'Block theme Forest'}).click();
+
+  // Global theme presets must not serialise their UI-only display name.
+  await page.locator('.visual-rail-settings button').filter({hasText:'Theme'}).click();
+  await page.locator('.visual-presets button').filter({hasText:'Dark'}).click();
+  assert.equal(await page.locator('.visual-presets button').count(),3);
+  await page.locator('.visual-rail-section').filter({hasText:'Hero'}).locator('.visual-rail-select').click();
+  // A block theme can still be set independently of the site's theme.
+  await page.getByRole('button',{name:'Block theme Paper'}).click();
+  assert.equal(await page.locator('.cms-section-hero').evaluate(el=>getComputedStyle(el).backgroundColor),
+    'rgb(247, 248, 243)');
+  const darkBackdrop=await page.locator('.portfolio.cms-site').evaluate(el=>
+    getComputedStyle(el).backgroundColor);
+  assert.equal(darkBackdrop, 'rgb(21, 30, 29)');
 
   // Save, reload and publish-style rehydration must not bring back a starter prompt.
   await Promise.all([

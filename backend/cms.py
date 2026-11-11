@@ -198,6 +198,14 @@ class ContentStore:
         finally: db.close()
 
     def save(self, document, revision):
+        # Compatibility with older running CMS tabs: the global colour preset
+        # button accidentally stored its display name inside document.theme.
+        # Remove only that known, non-content field; keep rejecting all other
+        # unrecognised theme properties rather than weakening validation.
+        if (isinstance(document, dict) and isinstance(document.get('theme'), dict)
+                and document['theme'].get('name') in ('Forest', 'Slate', 'Dark')):
+            document = copy.deepcopy(document)
+            document['theme'].pop('name')
         validate(document)
         db = self.connect()
         try:
