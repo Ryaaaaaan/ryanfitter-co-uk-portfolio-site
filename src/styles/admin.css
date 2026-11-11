@@ -44,3 +44,9 @@
 .admin-sign-in{display:inline-block;padding:12px 18px;background:var(--admin-text);color:#fff!important;border-radius:6px;text-decoration:none;font-weight:750;margin-top:12px}
 @media(max-width:1150px){.admin-module-grid{grid-template-columns:1fr 1fr}.admin-module{min-height:280px}.admin-main{padding:38px}}
 @media(max-width:760px){.admin-sidebar{position:static;width:auto;min-height:0;padding:16px 18px}.admin-sidebar-label{display:none}.admin-sidebar nav{display:flex;gap:8px;margin:16px 0 0;overflow-x:auto}.admin-sidebar nav>*{font-size:12px;white-space:nowrap}.admin-nav-inactive small{display:none}.admin-sidebar-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:12px 0 0}.admin-account{display:none}.admin-sidebar button{width:auto;padding:8px 12px}.admin-main{margin-left:0;padding:26px 18px}.admin-heading{display:block}.admin-secure{display:inline-block;margin-top:16px}.admin-module-grid{grid-template-columns:1fr}.admin-module{min-height:250px}.admin-module-top{margin-bottom:25px}.admin-next{display:block}.admin-next p{margin-top:15px}}
+
+/* The visual CMS needs the same near-fullscreen stage as LOPT's builder. */
+.admin-main-cms{padding:10px 12px 20px!important;max-width:none!important;min-height:100vh}
+.admin-main-cms>.admin-heading{display:none}
+.admin-main-cms .visual-cms{width:100%}
+@media(max-width:760px){.admin-main-cms{padding:0 0 12px!important}}
