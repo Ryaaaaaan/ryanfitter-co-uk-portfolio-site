@@ -400,6 +400,28 @@ export function CmsEditor({csrf}:{csrf:string}){
    project.cardVisible=true;
    edit({...draft,projects:[...draft.projects,project]});select('project:'+project.slug,openIn);
  }
+ function refreshPortfolioCaseStudies(){
+   if(!draft)return;
+   const slugs=['loftycards','bensons-for-beds','style-cafe','lbs-horticulture'];
+   const curated=starterSite.projects.filter(project=>slugs.includes(project.slug));
+   if(curated.length!==4)return;
+   if(!window.confirm('Update the LBS and Style Cafe case studies and arrange the four homepage cards in a 2×2 grid? This changes only your current draft. Your other homepage blocks, images and unpublished work are preserved.'))return;
+   const existing=new Map(draft.projects.map(project=>[project.slug,project]));
+   const projects=slugs.map((slug,index)=>{
+     const current=existing.get(slug);
+     const template=curated.find(project=>project.slug===slug)!;
+     if(slug==='loftycards'||slug==='bensons-for-beds')
+       return {...(current||clone(template)),number:String(index+1).padStart(2,'0')};
+     return {...clone(template),...(current?.image?{image:current.image}:{}),
+       cardVisible:current?.cardVisible??true,number:String(index+1).padStart(2,'0')};
+   }).concat(draft.projects.filter(project=>!slugs.includes(project.slug)));
+   const sections=draft.sections.map(section=>section.type==='projects'
+     ?{...section,layout:{...section.layout,view:'grid' as const,columns:2}}
+     :section);
+   edit({...draft,projects,sections});
+   setPage('projects');setSelected('project:lbs-horticulture');
+   setMessage('Four case studies are in your draft. Review LBS, then Save or Publish when ready. Other homepage blocks have been preserved.');
+ }
  function moveProject(from:number,to:number){
    if(!draft||from<0||to<0||from>=draft.projects.length||to>=draft.projects.length||from===to)return;
    const projects=[...draft.projects];const [item]=projects.splice(from,1);projects.splice(to,0,item);
@@ -638,6 +660,8 @@ export function CmsEditor({csrf}:{csrf:string}){
         </>:selected==='projects'?<>
           <h3>Case studies</h3><p>Select a project on the left or click Add case study to create a new draft page.</p>
           <button onClick={()=>addProject()}>+ Add case study</button>
+          <button type="button" onClick={refreshPortfolioCaseStudies}>↻ Update LBS + Style Cafe and arrange 4 cards</button>
+          <p className="visual-help">Keeps your existing homepage sections and screenshots. Review in draft before publishing.</p>
         </>:section?<>
           {section.type==='projects'&&<div className="visual-portfolio-card-manager">
             <strong>Portfolio card display</strong>
