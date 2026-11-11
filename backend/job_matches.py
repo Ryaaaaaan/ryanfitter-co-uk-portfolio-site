@@ -6,6 +6,7 @@ working pattern is verified solely because a job board classifies it 'remote'.
 from __future__ import annotations
 
 import hashlib
+import os
 import html
 import json
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from backend.job_profile import profile as career_profile, PROFILE_VERSION
 
 SEARCH_TERMS = ("ecommerce", "digital marketing", "shopify", "seo", "merchandising", "email marketing", "product data", "crm")
 ROLE_WORDS = ("ecommerce", "e-commerce", "digital marketing", "merchandis", "online trading",
@@ -106,32 +108,9 @@ def valid_link(url):
 
 
 def score_match(title, description, employment, hours, confidence):
-    name = title.lower()
-    if not any(word in name for word in ROLE_WORDS):
-        return None
-    if any(word in name for word in REJECT_TITLE):
-        return None
-    score = 53
-    if any(w in name for w in ("ecommerce", "e-commerce", "merchandis", "shopify", "online trading")):
-        score += 20
-    elif any(w in name for w in ("seo", "crm", "email marketing", "digital marketing", "digital trading")):
-        score += 15
-    else:
-        score += 9
-    tech = sum(word in description.lower() for word in TECH_WORDS)
-    score += min(12, tech * 3)
-    _, start, end = hours_in(hours + " " + description[:1800])
-    if start is not None and 10 <= start <= 20 and end <= 30:
-        score += 17
-    elif any(x in employment.lower() for x in ("part time", "part-time", "contract", "freelance")):
-        score += 9
-    elif "full" in employment.lower():
-        score -= 23
-    if confidence == "review":
-        score -= 6
-    # Keep weaker-but-relevant roles in Explore instead of hiding them.
-    return min(100, max(0, score)) if score >= 40 else None
-
+    """Compatibility for older callers; uses the same CV + working-fit model."""
+    report = career_profile(title, description, employment, hours)
+    return report["score"] if report else None
 
 def normalize(job):
     title = plain(job.get("title", ""))[:200]
@@ -143,9 +122,13 @@ def normalize(job):
     employment = plain(job.get("employment_type", ""))[:120]
     hours = plain(job.get("hours", ""))[:120]
     confidence = job.get("confidence", "review")
-    s = score_match(title, description, employment, hours, confidence)
-    if s is None:
+    profile_data = career_profile(
+        title, description, employment, hours, str(job.get("location", "")),
+        str(job.get("warning", "")), str(job.get("source", "")),
+    )
+    if not profile_data:
         return None
+    s = profile_data["score"]
     h, _, _ = hours_in(hours + " " + description[:1600])
     return {
         "key": key_for(company, title), "company": company, "title": title,
@@ -156,11 +139,30 @@ def normalize(job):
         "warning": plain(job.get("warning", ""))[:500] or "Confirm UK eligibility, hours and remote arrangements directly.",
         "confidence": confidence, "posted": str(job.get("posted", ""))[:10],
         "salary": plain(job.get("salary", ""))[:120],
+        # Keep only a short public job-spec excerpt. Never copy the user's CV.
+        "description": description[:1800],
+        **profile_data,
     }
 
 
+def enrich(row):
+    # Legacy matches were saved with only one combined heuristic score. Re-score
+    # without silently overwriting human save/dismiss choices or inventing spec.
+    result = dict(row)
+    if result.get("profile_version") != PROFILE_VERSION:
+        candidate = career_profile(
+            result.get("title", ""), result.get("description", "") or
+            result.get("reason", ""), result.get("employment_type", ""),
+            result.get("hours", ""), result.get("location", ""),
+            result.get("warning", ""), result.get("source", ""),
+        )
+        if candidate:
+            result.update(candidate)
+    return result
+
+
 def seed_rows():
-    return [{**item, "key": key_for(item["company"], item["title"])} for item in SEED]
+    return [enrich({**item, "key": key_for(item["company"], item["title"])}) for item in SEED]
 
 
 class MatchStore:
@@ -180,6 +182,14 @@ class MatchStore:
           finished TEXT, status TEXT NOT NULL, added INTEGER NOT NULL DEFAULT 0,
           reviewed INTEGER NOT NULL DEFAULT 0, details TEXT NOT NULL DEFAULT ''
         )""")
+        columns = {c["name"] for c in db.execute("PRAGMA table_info(job_scans)")}
+        for name, definition in (
+            ("existing", "INTEGER NOT NULL DEFAULT 0"),
+            ("saved_seen", "INTEGER NOT NULL DEFAULT 0"),
+            ("sources_json", "TEXT NOT NULL DEFAULT '[]'"),
+        ):
+            if name not in columns:
+                db.execute(f"ALTER TABLE job_scans ADD COLUMN {name} {definition}")
         stamp = now()
         for item in seed_rows():
             db.execute(
@@ -198,16 +208,27 @@ class MatchStore:
                 (limit,),
             ).fetchall()
             latest = db.execute("SELECT * FROM job_scans ORDER BY id DESC LIMIT 1").fetchone()
+            history = db.execute("SELECT * FROM job_scans ORDER BY id DESC LIMIT 12").fetchall()
+            def scan_record(r):
+                d = dict(r)
+                try:
+                    d["sources"] = json.loads(d.pop("sources_json") or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    d["sources"] = []
+                return d
             return {
-                "matches": [{**json.loads(r["data"]), "state": r["state"],
+                "matches": [{**enrich(json.loads(r["data"])), "state": r["state"],
                              "first_seen": r["first_seen"], "last_seen": r["last_seen"]} for r in rows],
-                "scan": dict(latest) if latest else None,
+                "scan": scan_record(latest) if latest else None,
+                "history": [scan_record(r) for r in history],
+                "total_saved": db.execute("SELECT count(*) FROM job_matches WHERE state='saved'").fetchone()[0],
+                "total_dismissed": db.execute("SELECT count(*) FROM job_matches WHERE state='dismissed'").fetchone()[0],
             }
 
     def get(self, key):
         with self.connect() as db:
             row = db.execute("SELECT * FROM job_matches WHERE key=?", (key,)).fetchone()
-            return ({**json.loads(row["data"]), "state": row["state"]} if row else None)
+            return ({**enrich(json.loads(row["data"])), "state": row["state"]} if row else None)
 
     def state(self, key, state):
         if state not in ("dismissed", "saved", "new"):
@@ -233,8 +254,10 @@ class MatchStore:
             db.commit()
             return cur.lastrowid
 
-    def finish(self, run_id, candidates, errors, sources_ok):
+    def finish(self, run_id, candidates, errors, sources_ok, source_details=None):
         added = 0
+        existing = 0
+        saved_seen = 0
         stamp = now()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -248,15 +271,22 @@ class MatchStore:
                     added += 1
                 else:
                     # Leave the human's saved/dismissed decision untouched.
+                    existing += 1
+                    if db.execute("SELECT state FROM job_matches WHERE key=?", (item["key"],)).fetchone()["state"] == "saved":
+                        saved_seen += 1
                     db.execute("UPDATE job_matches SET data=?,last_seen=? WHERE key=?",
                                (json.dumps(item), stamp, item["key"]))
             status = ("failed" if not sources_ok else "partial" if errors else "success")
             db.execute(
-                "UPDATE job_scans SET finished=?,status=?,added=?,reviewed=?,details=? WHERE id=?",
-                (stamp, status, added, len(candidates), "; ".join(errors)[:1000], run_id),
+                "UPDATE job_scans SET finished=?,status=?,added=?,reviewed=?,details=?,"
+                "existing=?,saved_seen=?,sources_json=? WHERE id=?",
+                (stamp, status, added, len(candidates), "; ".join(errors)[:1000],
+                 existing, saved_seen, json.dumps(source_details or []), run_id),
             )
             db.commit()
-        return {"status": status, "added": added, "reviewed": len(candidates), "errors": errors}
+        return {"status": status, "added": added, "reviewed": len(candidates),
+                "existing": existing, "saved_seen": saved_seen,
+                "sources": source_details or [], "errors": errors}
 
 
 def himalayas_jobs():
@@ -402,22 +432,147 @@ def jobicy_jobs():
     return results
 
 
+
+def reed_jobs():
+    """Read the official Reed Jobseeker API when the owner's key is configured.
+
+    This intentionally avoids web scraping and restricts search output to
+    listings containing remote/hybrid work evidence.
+    """
+    key = os.environ.get("REED_API_KEY", "").strip()
+    if not key:
+        return []
+    matched = []
+    for term in ("ecommerce", "digital merchandising", "online trading", "UX", "SEO marketing"):
+        r = requests.get(
+            "https://www.reed.co.uk/api/1.0/search",
+            params={"keywords": term, "resultsToTake": 50, "resultsToSkip": 0},
+            auth=(key, ""), timeout=12,
+            headers={"User-Agent": "RyanFitterPrivateJobScout/1.0"},
+        )
+        r.raise_for_status()
+        response = r.json()
+        if not isinstance(response, dict):
+            raise ValueError("Unexpected Reed result format")
+        for job in response.get("results", []):
+            if not isinstance(job, dict):
+                continue
+            desc = plain(job.get("jobDescription", ""))
+            location = plain(job.get("locationName", ""))
+            # Unlike the remote-only feeds, Reed lists both onsite and remote
+            # work. Only retain jobs with remote / hybrid listing evidence.
+            if not re.search(r"\b(remote|work.from.home|home.based|hybrid|wfh)\b",
+                             (location + " " + desc).lower()):
+                continue
+            url = job.get("jobUrl")
+            if not valid_link(url):
+                continue
+            minimum, maximum = job.get("minimumSalary"), job.get("maximumSalary")
+            salary_values = [f"£{x:,.0f}" for x in (minimum, maximum)
+                             if isinstance(x, (int,float))]
+            salary = "–".join(salary_values)
+            item = normalize({
+                "title": job.get("jobTitle", ""), "company": job.get("employerName", ""),
+                "apply_url": url, "description": desc, "source": "Reed",
+                "employment_type": "Part-time" if job.get("partTime") else "Full-time" if job.get("fullTime") else "",
+                "location": location, "salary": salary,
+                "posted": str(job.get("date", ""))[:10], "confidence": "review",
+                "warning": "Reed role mentions remote/hybrid work. Confirm zero required office attendance, UK eligibility and hours."
+            })
+            if item:
+                matched.append(item)
+    return matched
+
+
+def adzuna_jobs():
+    """Search the UK jobs API if the owner configures Adzuna personal-search credentials."""
+    app_id = os.environ.get("ADZUNA_APP_ID", "").strip()
+    app_key = os.environ.get("ADZUNA_APP_KEY", "").strip()
+    if not (app_id and app_key):
+        return []
+    matched = []
+    for term in ("remote ecommerce", "remote digital marketing", "remote UX", "remote merchandising"):
+        r = requests.get(
+            "https://api.adzuna.com/v1/api/jobs/gb/search/1",
+            params={"app_id": app_id, "app_key": app_key, "results_per_page": 50,
+                    "max_days_old": 30, "sort_by": "date", "what": term},
+            timeout=12, headers={"User-Agent": "RyanFitterPrivateJobScout/1.0"},
+        )
+        r.raise_for_status()
+        response = r.json()
+        if not isinstance(response, dict):
+            raise ValueError("Unexpected Adzuna result format")
+        for job in response.get("results", []):
+            if not isinstance(job, dict):
+                continue
+            desc = plain(job.get("description", ""))
+            title = plain(job.get("title", ""))
+            location = plain((job.get("location") or {}).get("display_name", ""))
+            if not re.search(r"\b(remote|work.from.home|home.based|hybrid|wfh)\b",
+                             (title + " " + desc + " " + location).lower()):
+                continue
+            salary_values = [f"£{x:,.0f}" for x in
+                             (job.get("salary_min"), job.get("salary_max"))
+                             if isinstance(x, (int,float))]
+            item = normalize({
+                "title": title, "company": (job.get("company") or {}).get("display_name", ""),
+                "apply_url": job.get("redirect_url", ""), "description": desc,
+                "source": "Adzuna", "employment_type": "Contract" if job.get("contract") else "",
+                "location": location, "salary": "–".join(salary_values),
+                "posted": str(job.get("created", ""))[:10], "confidence": "review",
+                "warning": "Adzuna search contains remote/hybrid terms. Confirm the employer's actual attendance requirements."
+            })
+            if item:
+                matched.append(item)
+    return matched
+
+
+def source_registry():
+    return (
+        ("Himalayas", himalayas_jobs, True),
+        ("Remotive", remotive_jobs, True),
+        ("Jobicy", jobicy_jobs, True),
+        ("Reed", reed_jobs, bool(os.environ.get("REED_API_KEY"))),
+        ("Adzuna", adzuna_jobs,
+         bool(os.environ.get("ADZUNA_APP_ID") and os.environ.get("ADZUNA_APP_KEY"))),
+    )
+
+
 def scan(store, run_id=None):
     # Claims across workers and scheduled SSM invocations use a transactional lock.
     if run_id is None:
         run_id = store.begin()
     errors = []
     sources_ok = 0
+    source_details = []
     matched = {}
-    for label, operation in (("Himalayas", himalayas_jobs), ("Remotive", remotive_jobs), ("Jobicy", jobicy_jobs)):
+    for label, operation, configured in source_registry():
+        if not configured:
+            source_details.append({
+                "name": label, "status": "not_configured", "matched": 0,
+                "detail": "Requires the owner's developer API credentials.",
+            })
+            continue
         try:
             rows = operation()
             sources_ok += 1
+            source_details.append({
+                "name": label, "status": "success", "matched": len(rows), "detail": "",
+            })
             for item in rows:
                 current = matched.get(item["key"])
                 if not current or item["score"] > current["score"]:
                     matched[item["key"]] = item
         except (requests.RequestException, ValueError, KeyError, TypeError) as error:
-            errors.append(f"{label}: {type(error).__name__}: {str(error)[:120]}")
-    result = store.finish(run_id, list(matched.values()), errors, sources_ok)
+            # Never expose exception strings: URL query parameters can contain
+            # Adzuna API credentials; errors appear in the user's scan history.
+            detail = type(error).__name__
+            if isinstance(error, requests.HTTPError) and error.response is not None:
+                detail += " (HTTP " + str(error.response.status_code) + ")"
+            source_details.append({
+                "name": label, "status": "failed", "matched": 0, "detail": detail,
+            })
+            errors.append(f"{label}: {detail}")
+    result = store.finish(run_id, list(matched.values()), errors, sources_ok,
+                          source_details=source_details)
     return result

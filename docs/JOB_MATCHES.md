@@ -3,7 +3,7 @@
 ## Using the board
 
 - Sign in at https://ryanfitter.co.uk/admin/job-matches.
-- The board shows feed results, relevance scores, hours when supplied, employment type, source attribution and explicit remote/UK caveats.
+- The board shows CV fit, working-arrangement fit and overall heuristic scores, role/seniority tags, hours when supplied, source attribution and explicit remote/UK caveats. Relevance is a SORT option, not a filter. Filter separately by role focus, seniority or hours.
 - **Save to applications** copies a vacancy into the private tracker at `/admin/jobs`. It is not an actual job application.
 - **Not relevant** dismisses a vacancy; future scans will not show it again.
 - Run scan now starts an in-process, nonblocking scan (requires your authenticated session + CSRF token). The page checks for completion while it is open.
@@ -20,21 +20,49 @@ GitHub Actions assumes the existing restricted GitHub OIDC deploy role and issue
 The scanner uses approved third-party JSON sources:
 - [Himalayas Remote Jobs API](https://himalayas.app/docs/remote-jobs-api) — source attributed and external apply link left unchanged.
 - [Remotive public jobs API](https://remotive.com/remote-jobs/api) — source attributed and original Remotive URL preserved.
+- [Jobicy public jobs API](https://jobicy.com) — European or worldwide remote postings from a public API.
+- **Reed Jobseeker API** (optional, requires an approved developer key) — official search API; no unauthorised scraping.
+- **Adzuna UK jobs API** (optional, requires personal-use app ID and app key) — official search API; adhere to its terms and tier limits.
 
-The scanner does *not* claim to cover LinkedIn, Reed, Indeed, YunoJuno, employer career sites or the ChatGPT scheduled search, which has broader public-web access. This is not a unified feed of the old ChatGPT reports; there is no native webhook/export channel available from the scheduled ChatGPT automation to a private website.
+Optional credentials are **not supplied or active by default**. To enable the adapters, provision root-only mode-0600 `/etc/ryanfitter-job-feeds.env` outside Git:
+```dotenv
+REED_API_KEY=YOUR_ISSUED_REED_KEY
+ADZUNA_APP_ID=YOUR_APP_ID
+ADZUNA_APP_KEY=YOUR_APP_KEY
+```
+Run the usual deployment afterward to restart the web service and refresh the feed scanner. Never commit credentials or share them in chat.
 
-## Matching and safeguards
+**Indeed**: no direct site integration is currently authorised. Indeed's developer APIs are subject to its partner programme, and its site terms prohibit unauthorised scraping. Use Indeed searches in a browser and add vacancies manually; don't turn on a browser scraper.
 
-- Job titles must match an ecommerce/marketing/SEO/merchandising/CRM keyword; generic engineering and highly senior roles are filtered out.
-- Part-time or contract roles rank above conventional full-time roles. This is heuristic scoring rather than AI CV analysis.
-- Only remote-listing providers are used. Himalayas country restrictions must include GB (or be worldwide); Remotive candidate location must clearly name UK/GB or worldwide.
-- Listings older than 45 days are omitted and salary/cadence are displayed only when disclosed.
-- Every result is labelled **check eligibility and remote terms**; job-board remote labels are not sufficient proof of no travel/office requirements.
-- Duplicate company+role pairs are consolidated; dismissed and saved choices persist across refreshes. A saved match becomes a separate private application.
-- If sources fail, scan history records partial/failure status and errors; no jobs are invented. Public API rate limits can reduce coverage.
-- Feed contents are never copied to public portfolio routes.
-- Existing data and media survive deployments; deploy backs up the SQLite database locally. Configure off-server backup separately.
-- Any salary, advertised date, weekly hours or vacancy status may become stale; verify against original employer listing before applying.
+First-party ATS feeds such as Greenhouse/Lever may be added later for explicitly selected employers. These do not provide a universal cross-employer search API.
+
+The three free feeds do not claim to cover LinkedIn, Indeed, YunoJuno, employer career sites or the ChatGPT scheduled search, which has broader public-web access. This is not a unified feed of the old ChatGPT reports; there is no native webhook/export channel available from the scheduled ChatGPT automation to a private website.
+
+## CV, lifestyle and seniority matching
+
+Reviewed against the latest uploaded November 2026 CV, not a model-inferred profile:
+- Direct experience includes ecommerce merchandising, catalogues and promotions across 25,000+ SKUs, Shopify, BigCommerce, Akeneo PIM, Magento, SEO, marketing, analytics, CRO, email/CRM, UX-led website redesigns and eBay.
+- Strongest role tags: Ecommerce, Merchandising, Product data & PIM, Marketing, SEO, Analytics & CRO, CRM & email, UX and Marketplace.
+- Specialist **UI design** has weaker demonstrated evidence than ecommerce UX work. Pure engineering or head-of-function roles are treated cautiously.
+- Role tags are derived primarily from job titles, with specification fallback. Seniority labels are title-based: Head / director, Senior / lead, Managerial title, Junior / entry, Not stated. Managerial title does not prove people management.
+- **CV fit (0–100)**: skills, role area, tools and seniority observed in the CV.
+- **Working fit (0–100)**: remote/hybrid/office evidence and hours relative to preferred 10–30 hours/week. Full-time and compulsory office attendance are penalised; explicitly advertised flexible working and adjustments receive a modest positive marker.
+- **Overall (0–100)**: blended work and CV fit, with a cap for mandatory office attendance. These are transparent heuristic estimates, not actual employer eligibility or automated machine learning.
+- Explicit accessibility / adjustments signals mean *only that words appear in a listing*. No personal diagnosis or sensitive medical details are stored or sent to the scanner.
+- A remote-job-board category is **not proof of a home-working contract**. Always review the employer listing.
+- Jobs are deduplicated by company and title; saved and dismissed decisions survive scans. Existing results without stored specifications are re-scored from the available role title and summary; those scores can be less precise.
+- Listing dates and vacancy availability may be stale. No automatic employer applications are made.
+
+## Scan health and audit history
+
+The dashboard's **View scan health & history** panel reports:
+- Last run, success/partial/failure, distinct matched jobs and new matches.
+- How many scanned jobs were already known; how many of those had already been saved in your dashboard.
+- Total saved and dismissed matches.
+- Per-source statuses including success, error and not-configured, plus each source's matching results count.
+- The last 12 scans.
+
+`job_scans` is migrated in place with extra counters and JSON source statuses. Older historical runs display **—** where the original scanner did not record a metric. A zero returned count is not a failure if an API call succeeds; source API limits can affect coverage.
 
 ## Operational verification
 
