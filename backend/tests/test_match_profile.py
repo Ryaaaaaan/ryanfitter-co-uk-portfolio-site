@@ -62,6 +62,18 @@ class ProfileTests(unittest.TestCase):
         self.assertLessEqual(hybrid["lifestyle_score"], 34)
         self.assertLessEqual(hybrid["score"], 54)
 
+    def test_office_day_count_penalty_scales(self):
+        one = profile("Ecommerce Manager", "Shopify, one day in office", "Part-time",
+                      "20 hours per week", "UK remote")
+        three = profile("Ecommerce Manager", "Shopify, 3 days in office", "Part-time",
+                        "20 hours per week", "UK remote")
+        four = profile("Ecommerce Manager", "Shopify, 4 days in office", "Part-time",
+                       "20 hours per week", "UK remote")
+        self.assertGreater(one["lifestyle_score"], three["lifestyle_score"])
+        self.assertGreater(three["lifestyle_score"], four["lifestyle_score"])
+        self.assertEqual(three["office_days"], 3)
+        self.assertIn("3 office day", three["remote_status"])
+
     def test_only_explicit_support_evidence(self):
         without = profile("Ecommerce Manager", "Shopify marketing",
                           "Contract", "", "UK remote")
