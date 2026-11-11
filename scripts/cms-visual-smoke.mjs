@@ -81,7 +81,7 @@ try{
   // Content fields follow the rendered hierarchy, not JSON insertion order.
   const contentOrder=await page.locator('.visual-inspector-body .visual-fieldset').first()
     .locator(':scope > label.visual-field').evaluateAll(nodes=>
-      nodes.map(node=>node.textContent.trim().split('\\n')[0].trim()));
+      nodes.map(node=>node.textContent.trim().split('\n')[0].trim()));
   const orderedIndex=(name)=>contentOrder.findIndex(value=>value.startsWith(name));
   assert(orderedIndex('Eyebrow')>=0&&orderedIndex('Eyebrow')<orderedIndex('Heading'),
     'Small eyebrow should appear ahead of the large heading');
@@ -90,7 +90,7 @@ try{
   // Pressing Enter in a heading creates a real displayed line break.
   await field.fill('A properly live\npreview');
   const heroHeading=page.locator('.portfolio-hero h1');
-  assert((await heroHeading.innerText()).includes('\\n'),'Heading line break not visible');
+  assert((await heroHeading.innerText()).includes('\n'),'Heading line break not visible');
   assert.equal(await heroHeading.evaluate(el=>getComputedStyle(el).whiteSpace),'pre-line');
   await field.fill('A properly live preview');
   assert((await heroHeading.innerText()).includes('A properly live preview'));
