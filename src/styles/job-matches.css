@@ -89,3 +89,37 @@
 .matches-health-footnote{font-size:11px;color:#6a7b6f;margin:16px 0 0}
 @media(max-width:780px){.matches-health-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.matches-health-source{grid-template-columns:1fr 130px;gap:8px}.matches-health-source>span:nth-child(3){grid-column:1/-1}}
 @media(max-width:600px){.matches-filters label{flex:1 1 140px}.matches-health-panel{padding:14px}.matches-status-head{align-items:stretch}.matches-results-heading{flex-direction:column;align-items:flex-start}.matches-score-chip{font-size:10px}.matches-health-stats>div{padding:11px}.matches-health-sources{gap:6px}}
+
+/* Advanced job-board controls, consistent button spacing and legible overseas
+   contract review blocks. */
+.matches-filters{display:grid;grid-template-columns:repeat(4,minmax(145px,1fr));gap:12px;margin-top:21px}
+.matches-filters .matches-tabs{grid-column:1/-1;gap:7px;margin:0}
+.matches-filters label{min-width:0!important;display:grid;gap:6px;flex:none!important}
+.matches-filters label:last-of-type{grid-column:span 2}
+.matches-filters :is(select,input){width:100%;max-width:none}
+.matches-reset-filters{justify-self:start;align-self:end;border:1px solid #c5d6ca!important;
+ background:#fff!important;color:#2d6649!important;border-radius:6px!important;
+ padding:10px 13px!important;font-weight:800!important;font-size:12px!important}
+.matches-reset-filters:hover{background:#edf5ee!important}
+.matches-contract-review{padding:12px 14px;margin:10px 0;
+ background:#f4f1ed;border:1px solid #e6d5bb;border-left:3px solid #b48140;
+ border-radius:4px;color:#6a4c25;font-size:12px;line-height:1.55}
+.matches-contract-review strong{display:block;font-size:12px;margin-bottom:3px}
+.matches-contract-review p{margin:0}
+.matches-card-actions{width:178px;gap:8px}
+.matches-card-actions>*{min-height:40px!important;display:flex!important;
+ align-items:center;justify-content:center;border-radius:6px!important;
+ font-size:12px!important;font-weight:800!important;line-height:1.3;
+ padding:9px 10px!important;text-align:center}
+.matches-card-actions button:not(.matches-primary){background:white;color:#436652;border:1px solid #cbd9cf}
+.matches-card-actions button:not(.matches-primary):hover{background:#f5f8f5}
+.matches-card-actions .matches-primary{background:#27664b!important;border:1px solid #27664b!important;color:white!important}
+.matches-card-actions a{background:#fff;color:#246343;border:1px solid #bed2c3}
+.matches-card-actions .matches-saved{color:#29724e;background:#edf5ef;border:1px solid #c8decf}
+@media(max-width:1320px){.matches-filters{grid-template-columns:repeat(3,minmax(150px,1fr))}}
+@media(max-width:950px){.matches-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:660px){.matches-filters{grid-template-columns:1fr}.matches-filters label:last-of-type{grid-column:auto}
+ .matches-card-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}
+ .matches-card-actions>*{min-width:0}
+ .matches-card-actions>*:last-child:nth-child(3){grid-column:1/-1}
+}

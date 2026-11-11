@@ -60,3 +60,32 @@
  .admin-app-cms .admin-sidebar{display:none}
  .admin-app-cms .admin-main-cms{padding:0!important}
 }
+
+/* Completed workspace overview: consistent, balanced destinations replace the
+   old row of dark, touching CTA buttons and outdated "next milestone". */
+.admin-overview-banner{display:flex;justify-content:space-between;align-items:center;gap:28px;
+ background:#eaf0eb;border:1px solid #d4e2d7;border-radius:10px;padding:25px 27px;margin:0 0 17px}
+.admin-overview-banner h2{font-size:27px;letter-spacing:-.05em;color:#1b3626;margin:9px 0}
+.admin-overview-banner p{margin:0;max-width:620px;color:#5c7564;font-size:13px;line-height:1.6}
+.admin-overview-main-action{display:inline-flex;align-items:center;justify-content:center;flex:none;
+ color:#fff!important;text-decoration:none;background:#24694a;border:1px solid #24694a;
+ padding:12px 16px;border-radius:7px;font-size:12px;font-weight:800}
+.admin-overview-main-action:hover{background:#194a35}
+.admin-overview-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.admin-overview-stats>div{background:white;border:1px solid #d7e2d9;border-radius:8px;padding:16px 20px;display:grid;gap:3px}
+.admin-overview-stats strong{font-size:28px;letter-spacing:-.04em;color:#1a392a}
+.admin-overview-stats span{font-size:11px;color:#6a7c6f;font-weight:700}
+.admin-shortcuts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.admin-shortcut{display:flex;gap:13px;align-items:start;text-decoration:none!important;
+ color:#1e3e2c!important;background:#fff;border:1px solid #d6e3d9;border-radius:10px;
+ padding:19px 18px;min-height:126px;transition:border-color .15s,transform .15s}
+.admin-shortcut:hover{border-color:#71a484;transform:translateY(-1px)}
+.admin-shortcut-icon{width:35px;height:35px;display:grid;place-items:center;border-radius:8px;
+ flex:none;font-size:22px;color:#27654a;background:#edf5ee}
+.admin-shortcut-content{display:grid;gap:5px;flex:1;min-width:0}
+.admin-shortcut-content small{font-size:9px;letter-spacing:.12em;color:#65846f;font-weight:850}
+.admin-shortcut-content strong{font-size:16px;letter-spacing:-.03em}
+.admin-shortcut-content>span{font-size:12px;color:#6b7d70;line-height:1.5}
+.admin-shortcut-arrow{align-self:center;color:#478261;font-size:19px}
+@media(max-width:900px){.admin-shortcuts{grid-template-columns:1fr}.admin-overview-banner{flex-direction:column;align-items:stretch}}
+@media(max-width:550px){.admin-overview-stats{gap:6px}.admin-overview-stats>div{padding:12px}.admin-overview-stats strong{font-size:21px}.admin-overview-stats span{font-size:10px}}
