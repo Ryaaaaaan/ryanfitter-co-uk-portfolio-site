@@ -11,6 +11,13 @@ instance = os.environ["INSTANCE_ID"]
 region = os.environ["AWS_REGION"]
 commands = ["""set -eu
 cd /opt/ryanfitter-portfolio
+# Optional job API keys are held in a root-readable file, never GitHub.
+# The SSM agent is root, then the scanner is dropped to the service user.
+if [ -f /etc/ryanfitter-job-feeds.env ]; then
+  set -a
+  . /etc/ryanfitter-job-feeds.env
+  set +a
+fi
 runuser -u ryanfitter-admin -- /opt/ryanfitter-portfolio/.venv/bin/python -m backend.run_job_scan
 """]
 parameters = json.dumps({"commands": commands, "executionTimeout": ["420"]})
