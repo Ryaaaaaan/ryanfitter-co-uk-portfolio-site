@@ -335,9 +335,14 @@ def himalayas_jobs():
             # Country eligibility and timezone eligibility are different.
             zones = row.get("timezoneRestrictions") or []
             if isinstance(zones, list) and zones:
-                zone_values = {str(z).strip().upper().replace("UTC", "").replace(":00", "")
-                               for z in zones if isinstance(z, (str, int, float))}
-                if not any(z in zone_values for z in ("0", "+0", "-0", "1", "+1")):
+                zone_values = set()
+                for zone in zones:
+                    if not isinstance(zone, (str, int, float)):
+                        continue
+                    token = str(zone).strip().upper().replace("UTC", "").replace(":00", "")
+                    if re.fullmatch(r"[+-]?\d{1,2}", token):
+                        zone_values.add(int(token))
+                if zone_values and not ({0, 1} & zone_values):
                     caution += " Listed timezones may exclude UK working hours; confirm overlap."
             link = row.get("applicationLink")
             if not valid_link(link):
