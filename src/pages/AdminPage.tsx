@@ -3,6 +3,8 @@ import "../styles/admin.css";
 import {CmsEditor} from "../cms/Editor";
 import {JobsPage} from "../jobs/JobsPage";
 import {JobMatches} from "../jobs/JobMatches";
+import {CvLibrary} from "../jobs/CvLibrary";
+import {InterviewCalendar} from "../jobs/InterviewCalendar";
 
 type Session = {
   authenticated: boolean;
@@ -57,15 +59,19 @@ export function AdminPage(){
   const cms=window.location.pathname.replace(/\/+$/, "")==="/admin/cms";
   const jobs=window.location.pathname.replace(/\/+$/, "")==="/admin/jobs";
   const matches=window.location.pathname.replace(/\/+$/, "")==="/admin/job-matches";
+  const cvs=window.location.pathname.replace(/\/+$/, "")==="/admin/cvs";
+  const calendar=window.location.pathname.replace(/\/+$/, "")==="/admin/interviews";
   return <div className="admin-app">
     {status==="ready"&&identity?<>
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">ryan<span>.</span>fitter <small>WORKSPACE</small></a>
         <div className="admin-sidebar-label">WORKSPACE</div>
         <nav aria-label="Dashboard navigation">
-          <a href="/admin" className={!cms&&!jobs&&!matches?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches?"page":undefined}>Overview</a>
+          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar?"page":undefined}>Overview</a>
           <a href="/admin/job-matches" className={matches?"admin-nav-active":""} aria-current={matches?"page":undefined}>Job matches</a>
           <a href="/admin/jobs" className={jobs?"admin-nav-active":""} aria-current={jobs?"page":undefined}>Applications</a>
+          <a href="/admin/interviews" className={calendar?"admin-nav-active":""} aria-current={calendar?"page":undefined}>Interview calendar</a>
+          <a href="/admin/cvs" className={cvs?"admin-nav-active":""} aria-current={cvs?"page":undefined}>My CVs</a>
           <span className="admin-nav-inactive">Work board <small>SOON</small></span>
           <a href="/admin/cms" className={cms?"admin-nav-active":""} aria-current={cms?"page":undefined}>Portfolio CMS</a>
         </nav>
@@ -83,12 +89,12 @@ export function AdminPage(){
       </aside>
       <main className="admin-main" id="main">
         <div className="admin-heading">
-          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":"Overview"}</h1>
+          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":"Overview"}</h1>
           <p>A quiet place for your applications, projects and website content.</p></div>
           <span className="admin-secure">● Protected by Cognito</span>
         </div>
-        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:<>
-        <div className="admin-notice"><strong>Foundation installed.</strong> Your private dashboard is ready. Your portfolio CMS, job matches scanner and application tracker are available. The work board is planned.</div>
+        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:cvs?<CvLibrary csrf={identity.csrf}/>:calendar?<InterviewCalendar csrf={identity.csrf}/>:<>
+        <div className="admin-notice"><strong>Foundation installed.</strong> Your private dashboard is ready. Your portfolio CMS, expanded job matches, applications, CV vault and interview calendar are available. The work board is planned.</div>
         <div className="admin-module-grid">
           {modules.map(module=><section className="admin-module" key={module.name}>
             <div className="admin-module-top"><span className="admin-module-symbol" aria-hidden="true">{module.icon}</span><span className="admin-coming">{module.name==="Work board"?"PLANNED":"READY"}</span></div>
@@ -102,7 +108,7 @@ export function AdminPage(){
           <div><span className="admin-overline">NEXT MILESTONE</span><h2>Build your website.</h2></div>
           <p>Edit text and styling, add components, save drafts and publish from the Portfolio CMS.</p>
         </section>
-        <div className="cms-row"><a href="/admin/job-matches" className="admin-sign-in">Review job matches →</a><a href="/admin/cms" className="admin-sign-in">Open Portfolio CMS →</a><a href="/admin/jobs" className="admin-sign-in">Open applications →</a></div>
+        <div className="cms-row"><a href="/admin/interviews" className="admin-sign-in">Interview calendar →</a><a href="/admin/cvs" className="admin-sign-in">My CVs →</a><a href="/admin/job-matches" className="admin-sign-in">Review job matches →</a><a href="/admin/cms" className="admin-sign-in">Open Portfolio CMS →</a><a href="/admin/jobs" className="admin-sign-in">Open applications →</a></div>
         </>}
       </main>
     </>:<main className="admin-entry" id="main">
