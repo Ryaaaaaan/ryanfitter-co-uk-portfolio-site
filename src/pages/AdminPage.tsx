@@ -87,7 +87,7 @@ export function AdminPage(){
           </form>
         </div>
       </aside>
-      <main className="admin-main" id="main">
+      <main className={"admin-main"+(cms?" admin-main-cms":"")} id="main">
         <div className="admin-heading">
           <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":"Overview"}</h1>
           <p>A quiet place for your applications, projects and website content.</p></div>
