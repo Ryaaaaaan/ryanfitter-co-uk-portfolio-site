@@ -17,6 +17,7 @@ from datetime import timedelta
 from threading import Thread
 from backend.cms import ContentStore
 from backend.jobs import JobStore
+from backend.work_board import TaskStore
 from backend.job_matches import MatchStore, scan as scan_matches
 from backend.cv_vault import CvVault
 from backend.interviews import InterviewStore, to_ical
@@ -71,6 +72,7 @@ def create_app() -> Flask:
 
     store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    tasks = TaskStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     matches = MatchStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
     cv = CvVault(os.environ.get("CV_DIRECTORY", "/var/lib/ryanfitter-admin/cvs"),
@@ -210,7 +212,7 @@ def create_app() -> Flask:
             "authenticated": True,
             "email": session.get("email") or "",
             "csrf": session["csrf"],
-            "features": {"jobs": "ready", "tasks": "planned", "cms": "ready"},
+            "features": {"jobs": "ready", "tasks": "ready", "cms": "ready"},
         })
 
     @app.get("/content/site.json")
@@ -403,6 +405,38 @@ def create_app() -> Flask:
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
 
+    @app.route("/admin/api/tasks", methods=["GET", "POST"])
+    def tasks_collection():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"tasks": tasks.all()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            return jsonify({"task": tasks.create(request.get_json())}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.route("/admin/api/tasks/<int:task_id>", methods=["PUT", "DELETE"])
+    def task_detail(task_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or type(data.get("revision")) is not int:
+            return jsonify({"error": "Revision required"}), 400
+        try:
+            if request.method == "DELETE":
+                tasks.delete(task_id, data["revision"])
+                return "", 204
+            return jsonify({"task": tasks.update(task_id, data.get("task"), data["revision"])})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
     @app.route("/admin/api/jobs", methods=["GET", "POST"])
     def jobs_collection():
         if not signed_in():
@@ -483,6 +517,7 @@ def create_app() -> Flask:
     @app.get("/admin")
     @app.get("/admin/")
     @app.get("/admin/cms")
+    @app.get("/admin/tasks")
     @app.get("/admin/jobs")
     @app.get("/admin/job-matches")
     @app.get("/admin/cvs")
