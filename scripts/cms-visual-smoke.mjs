@@ -126,7 +126,14 @@ try{
   const eyebrow=await page.locator('.cms-section-contact .portfolio-kicker').evaluate(el=>getComputedStyle(el).color);
   assert.equal(eyebrow,'rgb(255, 0, 0)','Eyebrow override not applied to rendered page');
   await page.locator('[aria-label="Primary Background hex value"]').fill('#112233');
-  const buttonBackground=await page.locator('.cms-section-contact .portfolio-button-primary').evaluate(el=>getComputedStyle(el).backgroundColor);
+  const buttonDiagnostic=await page.locator('.cms-section-contact .portfolio-button-primary').evaluate(el=>({
+    actual:getComputedStyle(el).backgroundColor,style:el.getAttribute('style'),
+    parent:el.parentElement?.getAttribute('style'),
+    cssValue:getComputedStyle(el).getPropertyValue('--cms-btn-primary-bg')
+  }));
+  console.log('Button style diagnostic', JSON.stringify(buttonDiagnostic),
+    'input', await page.locator('[aria-label="Primary Background hex value"]').inputValue());
+  const buttonBackground=buttonDiagnostic.actual;
   assert.equal(buttonBackground,'rgb(17, 34, 51)','Button background override did not reach the page');
   await page.locator('[aria-label="Line Height exact value"]').fill('1.8');
   const line=await page.locator('.cms-section-contact p').first().evaluate(el=>({
