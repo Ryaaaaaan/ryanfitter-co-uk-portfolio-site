@@ -16,11 +16,20 @@ export function Buttons({links=[],style:options}:{links?:Link[];style?:ButtonSty
     '--cms-btn-secondary-text':options?.secondaryText||undefined,
     '--cms-btn-border-color':options?.borderColor||undefined,
   } as CSSProperties;
-  return <div className="portfolio-actions" style={css}>{links.map((link,i)=>
-    <a key={i} href={safeHref(link.href)}
-      className={'portfolio-button portfolio-button-'+(link.variant|| (i===0?'primary':'outline'))}>
+  return <div className="portfolio-actions" style={css}>{links.map((link,i)=>{
+    const variant=link.variant||(i===0?'primary':'outline');
+    const buttonCSS={
+      backgroundColor:variant==='primary'?options?.primaryBackground||undefined:
+        variant==='outline'?options?.secondaryBackground||undefined:undefined,
+      borderColor:options?.borderColor||undefined,
+      '--cms-btn-primary-text':options?.primaryText||undefined,
+      '--cms-btn-secondary-text':options?.secondaryText||undefined,
+    } as CSSProperties;
+    return <a key={i} href={safeHref(link.href)}
+      style={buttonCSS} className={'portfolio-button portfolio-button-'+variant}>
       {link.label} ↗
-    </a>)}</div>;
+    </a>;
+  })}</div>;
 }
 function Heading({section:s}:{section:Section}){return <div className="portfolio-section-heading"><div>{s.eyebrow&&<span className="portfolio-kicker">{s.eyebrow}</span>}<h2>{s.heading}</h2></div>{s.body&&<p>{s.body}</p>}</div>;}
 export function PortfolioSection({section:s,site}:{section:Section;site:SiteContent}){
