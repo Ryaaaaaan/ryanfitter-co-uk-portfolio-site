@@ -366,7 +366,7 @@ def jobicy_jobs():
             if not isinstance(row, dict):
                 continue
             location = str(row.get("jobGeo") or "")
-            if not re.search(r"\\b(?:united kingdom|great britain|uk|europe|anywhere|worldwide)\\b", location.lower()):
+            if not re.search(r"\b(?:united kingdom|great britain|uk|europe|anywhere|worldwide)\b", location.lower()):
                 continue
             url = row.get("url")
             if not valid_link(url):
