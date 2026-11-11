@@ -141,22 +141,6 @@
 .visual-media-grid img{display:block;width:100%;height:100px;object-fit:cover;border:1px solid #ebefea;border-radius:5px}
 .visual-media-grid span{font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .visual-media-grid small{font-size:10px;color:#518061}
-/* New reusable public blocks share the same markup in the CMS preview. */
-.cms-image-text{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:8%;margin-block:0}
-.cms-image-text.cms-image-left figure{order:-1}
-.cms-image-text-copy h2,.cms-gallery h2,.cms-cta h2{font-size:clamp(2rem,4vw,3.3rem);letter-spacing:-.055em;line-height:1.1;margin:0 0 20px}
-.cms-image-text-copy p,.cms-cta p{font-size:1.1em;line-height:1.65;color:var(--pf-muted);margin-bottom:26px}
-.cms-image-text figure,.cms-gallery figure{min-width:0;margin:0}
-.cms-image-text img,.cms-gallery img{display:block;width:100%;max-height:610px;object-fit:contain;border:1px solid #d6e2d8;background:white;border-radius:8px}
-.cms-image-text figcaption,.cms-gallery figcaption{font-size:.75em;color:var(--pf-muted);margin-top:10px}
-.cms-media-placeholder{display:grid;place-items:center;min-height:250px;padding:22px;border:1px dashed #b2c9b6;border-radius:7px;background:var(--pf-panel);color:var(--pf-muted);text-align:center}
-.cms-gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px}
-.cms-testimonial{max-width:940px;padding-block:12px}
-.cms-testimonial blockquote{font-size:clamp(1.8rem,4vw,3.8rem);line-height:1.35;letter-spacing:-.03em;margin:25px 0}
-.cms-testimonial strong,.cms-testimonial span{display:block;font-size:.9em}
-.cms-testimonial span{color:var(--pf-muted)}
-.cms-cta{display:flex;align-items:center;justify-content:space-between;gap:22px}
-.cms-divider hr{border:0;border-top:1px solid #a0b1a2;opacity:.6}
 .visual-page-frame.mobile .portfolio-container{width:calc(100% - 34px)!important}
 .visual-page-frame.mobile .portfolio-header-inner{height:auto;min-height:70px;flex-wrap:wrap;gap:10px;padding:12px 0}
 .visual-page-frame.mobile .portfolio-wordmark{font-size:18px}
