@@ -315,3 +315,27 @@
 .visual-sidebar-template-options button:hover{background:#edf5ef!important;border-color:#74a586!important}
 .visual-sidebar-template-options button strong{font-size:11px}
 .visual-sidebar-template-options button small{font-size:10px;font-weight:500;color:#677c6d;line-height:1.4}
+
+/* Numeric inspector controls give both fast sliders and exact CSS-value inputs. */
+.visual-inspector-help{font-size:11px;line-height:1.5;color:#65836c;margin:14px 0}
+.visual-number-line{display:grid;grid-template-columns:minmax(0,1fr) 67px auto;gap:6px;align-items:center}
+.visual-number-line input[type=range]{width:100%;min-width:0}
+.visual-number-line input[type=number]{width:67px!important;min-width:0!important;padding:7px 5px!important;font-variant-numeric:tabular-nums}
+.visual-number-line output{min-width:30px;justify-self:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+.visual-cms .visual-inspector-body .visual-number-line input[type=number]{font-size:12px!important}
+.visual-page-frame.tablet .cms-section-stats .portfolio-proof-grid{
+  grid-template-columns:repeat(var(--cms-tablet-columns,2),minmax(0,1fr))
+}
+.visual-page-frame.mobile .cms-section-stats .portfolio-proof-grid,
+.visual-page-frame.mobile .cms-section-projects .portfolio-projects,
+.visual-page-frame.mobile .cms-section-expertise .portfolio-expertise-grid,
+.visual-page-frame.mobile .cms-section-gallery .cms-gallery-grid{
+  grid-template-columns:minmax(0,1fr)
+}
+.visual-page-frame.tablet .cms-section-stats .portfolio-proof-grid>div{border-right:0}
+.visual-page-frame.mobile .cms-section-stats .portfolio-proof-grid>div{border:0;padding:20px 0}
+.visual-page-frame.tablet .cms-section-stats .portfolio-proof-grid>div:nth-child(even){border-left:1px solid #d1dad0}
+.visual-page-frame.mobile .cms-section-stats .portfolio-proof-grid>div:nth-child(even){border-left:0}
+.visual-page-frame.mobile .cms-section .portfolio-about,
+.visual-page-frame.mobile .cms-section .cms-image-text{grid-template-columns:1fr}
+.visual-page-frame.mobile .cms-section.cms-custom-heading-size :is(h1,h2,h3){font-size:var(--cms-heading-size)}
