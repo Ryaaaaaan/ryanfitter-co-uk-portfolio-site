@@ -5,6 +5,7 @@ import {JobsPage} from "../jobs/JobsPage";
 import {JobMatches} from "../jobs/JobMatches";
 import {CvLibrary} from "../jobs/CvLibrary";
 import {InterviewCalendar} from "../jobs/InterviewCalendar";
+import {WorkBoard} from "../jobs/WorkBoard";
 
 type Session = {
   authenticated: boolean;
@@ -15,28 +16,14 @@ type Session = {
 type LoadState = "loading" | "ready" | "unauthorised" | "unavailable";
 
 const modules = [
-  {
-    name: "Applications",
-    eyebrow: "JOB TRACKER",
-    description: "Keep vacancies, application notes, interview dates and follow-ups in one place.",
-    icon: "◈",
-    detail: "Saved → Applied → Interview → Offer"
-  },
-  {
-    name: "Work board",
-    eyebrow: "PERSONAL PROJECTS",
-    description: "A straightforward board for everyday tasks, projects and deadlines.",
-    icon: "▦",
-    detail: "To do → In progress → Done"
-  },
-  {
-    name: "Portfolio CMS",
-    eyebrow: "WEBSITE CONTENT",
-    description: "Edit case studies, upload real screenshots and publish updates to the public site.",
-    icon: "✳",
-    detail: "Drafts → Review → Published"
-  }
+  {name:"Job matches",eyebrow:"DISCOVER",description:"Review roles and see why they match your CV and working preferences.",icon:"◈",detail:"Automated scan · Mon, Wed, Fri",url:"/admin/job-matches",stat:"matches"},
+  {name:"Applications",eyebrow:"FOLLOW UP",description:"Save vacancies, track applications and keep important next steps together.",icon:"▤",detail:"Saved → Applied → Interview → Offer",url:"/admin/jobs",stat:"jobs"},
+  {name:"Work board",eyebrow:"DAY-TO-DAY",description:"Personal projects, LoftyCards, LOPT and ongoing tasks in one place.",icon:"▦",detail:"To do → In progress → Done",url:"/admin/tasks",stat:"tasks"},
+  {name:"Interview calendar",eyebrow:"YOUR SCHEDULE",description:"Record interviews, meeting links, notes and calendar exports.",icon:"◷",detail:"Monthly schedule and .ics export",url:"/admin/interviews",stat:""},
+  {name:"My CVs",eyebrow:"DOCUMENTS",description:"Store your CV versions privately and download them from any device.",icon:"▣",detail:"Secure documents",url:"/admin/cvs",stat:""},
+  {name:"Portfolio CMS",eyebrow:"WEBSITE",description:"Edit sections and case studies, preview drafts and publish intentionally.",icon:"✳",detail:"Draft → Preview → Publish",url:"/admin/cms",stat:""}
 ];
+
 
 export function AdminPage(){
   const [status,setStatus]=useState<LoadState>("loading");
@@ -57,6 +44,26 @@ export function AdminPage(){
   },[]);
 
   const cms=window.location.pathname.replace(/\/+$/, "")==="/admin/cms";
+  const tasks=window.location.pathname.replace(/\/+$/, "")==="/admin/tasks";
+  const [counts,setCounts]=useState<{matches:number;applications:number;tasks:number}|null>(null);
+  useEffect(()=>{
+    if(window.location.pathname.replace(/\/+$/,'')!=='/admin'||status!=='ready')return;
+    let alive=true;
+    void Promise.allSettled([
+      fetch('/admin/api/job-matches',{cache:'no-store'}).then(r=>r.ok?r.json():null),
+      fetch('/admin/api/jobs',{cache:'no-store'}).then(r=>r.ok?r.json():null),
+      fetch('/admin/api/tasks',{cache:'no-store'}).then(r=>r.ok?r.json():null)
+    ]).then(results=>{
+      if(!alive)return;
+      const data=results.map(result=>result.status==='fulfilled'?result.value:null);
+      setCounts({
+        matches:Array.isArray(data[0]?.matches)?data[0].matches.filter((x:{state:string})=>x.state==='new').length:0,
+        applications:Array.isArray(data[1]?.jobs)?data[1].jobs.length:0,
+        tasks:Array.isArray(data[2]?.tasks)?data[2].tasks.filter((x:{status:string})=>x.status!=='done').length:0
+      });
+    });
+    return()=>{alive=false;};
+  },[status]);
   const jobs=window.location.pathname.replace(/\/+$/, "")==="/admin/jobs";
   const matches=window.location.pathname.replace(/\/+$/, "")==="/admin/job-matches";
   const cvs=window.location.pathname.replace(/\/+$/, "")==="/admin/cvs";
@@ -67,12 +74,12 @@ export function AdminPage(){
         <a href="/" className="admin-brand">ryan<span>.</span>fitter <small>WORKSPACE</small></a>
         <div className="admin-sidebar-label">WORKSPACE</div>
         <nav aria-label="Dashboard navigation">
-          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar?"page":undefined}>Overview</a>
+          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks?"page":undefined}>Overview</a>
           <a href="/admin/job-matches" className={matches?"admin-nav-active":""} aria-current={matches?"page":undefined}>Job matches</a>
           <a href="/admin/jobs" className={jobs?"admin-nav-active":""} aria-current={jobs?"page":undefined}>Applications</a>
           <a href="/admin/interviews" className={calendar?"admin-nav-active":""} aria-current={calendar?"page":undefined}>Interview calendar</a>
           <a href="/admin/cvs" className={cvs?"admin-nav-active":""} aria-current={cvs?"page":undefined}>My CVs</a>
-          <span className="admin-nav-inactive">Work board <small>SOON</small></span>
+          <a href="/admin/tasks" className={tasks?"admin-nav-active":""} aria-current={tasks?"page":undefined}>Work board</a>
           <a href="/admin/cms" className={cms?"admin-nav-active":""} aria-current={cms?"page":undefined}>Portfolio CMS</a>
         </nav>
         <div className="admin-sidebar-bottom">
@@ -89,27 +96,32 @@ export function AdminPage(){
       </aside>
       <main className={"admin-main"+(cms?" admin-main-cms":"")} id="main">
         <div className="admin-heading">
-          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":"Overview"}</h1>
+          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":tasks?"Work board":"Overview"}</h1>
           <p>A quiet place for your applications, projects and website content.</p></div>
           <span className="admin-secure">● Protected by Cognito</span>
         </div>
-        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:cvs?<CvLibrary csrf={identity.csrf}/>:calendar?<InterviewCalendar csrf={identity.csrf}/>:<>
-        <div className="admin-notice"><strong>Foundation installed.</strong> Your private dashboard is ready. Your portfolio CMS, expanded job matches, applications, CV vault and interview calendar are available. The work board is planned.</div>
-        <div className="admin-module-grid">
-          {modules.map(module=><section className="admin-module" key={module.name}>
-            <div className="admin-module-top"><span className="admin-module-symbol" aria-hidden="true">{module.icon}</span><span className="admin-coming">{module.name==="Work board"?"PLANNED":"READY"}</span></div>
-            <span className="admin-overline">{module.eyebrow}</span>
-            <h2>{module.name}</h2>
-            <p>{module.description}</p>
-            <div className="admin-module-bottom">{module.detail}</div>
-          </section>)}
-        </div>
-        <section className="admin-next">
-          <div><span className="admin-overline">NEXT MILESTONE</span><h2>Build your website.</h2></div>
-          <p>Edit text and styling, add components, save drafts and publish from the Portfolio CMS.</p>
-        </section>
-        <div className="cms-row"><a href="/admin/interviews" className="admin-sign-in">Interview calendar →</a><a href="/admin/cvs" className="admin-sign-in">My CVs →</a><a href="/admin/job-matches" className="admin-sign-in">Review job matches →</a><a href="/admin/cms" className="admin-sign-in">Open Portfolio CMS →</a><a href="/admin/jobs" className="admin-sign-in">Open applications →</a></div>
-        </>}
+        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:cvs?<CvLibrary csrf={identity.csrf}/>:calendar?<InterviewCalendar csrf={identity.csrf}/>:tasks?<WorkBoard csrf={identity.csrf}/>:<>
+          <section className="admin-overview-banner">
+            <div><span className="admin-overline">YOUR WORKSPACE</span>
+              <h2>Everything in one place.</h2>
+              <p>Check your job matches, follow up on applications, manage tasks and update the public portfolio.</p>
+            </div>
+            <a href="/admin/job-matches" className="admin-overview-main-action">Review job matches</a>
+          </section>
+          <div className="admin-overview-stats" aria-label="Workspace overview">
+            <div><strong>{counts?.matches??'—'}</strong><span>Jobs to review</span></div>
+            <div><strong>{counts?.applications??'—'}</strong><span>Applications saved</span></div>
+            <div><strong>{counts?.tasks??'—'}</strong><span>Tasks still open</span></div>
+          </div>
+          <div className="admin-shortcuts" aria-label="Workspace shortcuts">
+            {modules.map(module=><a href={module.url} className="admin-shortcut" key={module.name}>
+              <span className="admin-shortcut-icon" aria-hidden="true">{module.icon}</span>
+              <span className="admin-shortcut-content">
+                <small>{module.eyebrow}</small><strong>{module.name}</strong><span>{module.description}</span>
+              </span><span aria-hidden="true" className="admin-shortcut-arrow">↗</span>
+            </a>)}
+          </div>
+                </>}
       </main>
     </>:<main className="admin-entry" id="main">
       <a href="/" className="admin-brand">ryan<span>.</span>fitter</a>
