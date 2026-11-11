@@ -100,6 +100,47 @@ try{
   assert.equal(await page.locator('.visual-inspector-head strong').innerText(),'Hero',
     'The first saved section should be selected, not Templates');
 
+  // Removing a stat must redistribute all remaining items equally.
+  await page.locator('.visual-rail-section').filter({hasText:'Stats / numbers'}).locator('.visual-rail-select').click();
+  assert.equal(await page.locator('.cms-section-stats .portfolio-proof-grid>div').count(),4);
+  await page.locator('.visual-array-head').filter({hasText:'Items 4'}).locator('button').last().click();
+  const tiles=page.locator('.cms-section-stats .portfolio-proof-grid>div');
+  assert.equal(await tiles.count(),3,'Removing a stat should leave exactly three');
+  const widths=await tiles.evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));
+  assert(Math.max(...widths)-Math.min(...widths)<2,
+    'Remaining stats must automatically use 33.33% of the row each');
+
+  // A custom section anchor should change rendered DOM id and retarget all
+  // existing navigation links to the same new section.
+  await page.locator('.visual-rail-section').filter({hasText:'Contact'}).locator('.visual-rail-select').click();
+  await page.locator('[aria-label="Section anchor"]').fill('reach-me');
+  assert.equal(await page.locator('.cms-section-contact').getAttribute('id'),'reach-me');
+  assert.equal(await page.locator('.portfolio-header nav a').last().getAttribute('href'),' /#reach-me'.trim());
+  const scrollSelect=page.locator('.visual-inspector-body select[aria-label="Choose section to scroll to"]').first();
+  await scrollSelect.selectOption('#proof');
+  assert.equal(await page.locator('.cms-section-contact .portfolio-button').first().getAttribute('href'),'#proof');
+
+  // Typography, theme overrides and button appearance affect the actual page
+  // (not just settings stored in a form).
+  await page.locator('[aria-label="Eyebrow Color hex value"]').fill('#ff0000');
+  const eyebrow=await page.locator('.cms-section-contact .portfolio-kicker').evaluate(el=>getComputedStyle(el).color);
+  assert.equal(eyebrow,'rgb(255, 0, 0)','Eyebrow override not applied to rendered page');
+  await page.locator('[aria-label="Primary Background hex value"]').fill('#112233');
+  const buttonBackground=await page.locator('.cms-section-contact .portfolio-button-primary').evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.equal(buttonBackground,'rgb(17, 34, 51)','Button background override did not reach the page');
+  await page.locator('[aria-label="Line Height exact value"]').fill('1.8');
+  const line=await page.locator('.cms-section-contact p').first().evaluate(el=>({
+    line:parseFloat(getComputedStyle(el).lineHeight),size:parseFloat(getComputedStyle(el).fontSize)
+  }));
+  assert(line.line>line.size*1.7,'Line height should apply immediately to rendered block copy');
+
+  // About layout should be able to switch from side-by-side to full-width text.
+  await page.locator('.visual-rail-section').filter({hasText:'About'}).locator('.visual-rail-select').click();
+  await page.locator('[aria-label="Columns exact value"]').fill('1');
+  const aboutCols=await page.locator('.cms-section-about .portfolio-about').evaluate(
+    el=>getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length);
+  assert.equal(aboutCols,1,'One-column About layout did not apply');
+
   await page.locator('.visual-rail-page select').selectOption('projects');
   await page.locator('.portfolio-detail').waitFor();
   assert.equal(await page.locator('.visual-page-frame').isVisible(),true);
