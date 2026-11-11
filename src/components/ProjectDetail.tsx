@@ -10,7 +10,7 @@ export function ProjectDetail({project,projects}:{project:Project;projects:Proje
     <h1>{project.title}</h1>
     <p className="portfolio-detail-lead">{project.summary}</p>
     {project.image&&<img className="cms-project-detail-image" src={project.image} alt={project.client+" website screenshot"} loading="lazy"/>}
-    <div className="portfolio-detail-facts">{project.facts.map((fact,i)=><div key={i}><strong>{fact.value}</strong><span>{fact.label}</span></div>)}</div>
+    <div className={"portfolio-detail-facts"+(project.facts.length===4?" portfolio-detail-facts-four":"")}>{project.facts.map((fact,i)=><div key={i}><strong>{fact.value}</strong><span>{fact.label}</span></div>)}</div>
     <div className="portfolio-detail-body">
       <div className="portfolio-detail-main">
         <section><span className="portfolio-kicker">THE CONTEXT</span><h2>The challenge</h2><p>{project.challenge}</p></section>
