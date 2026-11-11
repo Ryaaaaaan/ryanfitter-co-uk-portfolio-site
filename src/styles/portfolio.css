@@ -501,3 +501,9 @@ html{scroll-behavior:smooth}
   color:var(--cms-btn-primary-text,var(--cms-section-background,var(--pf-ink)))!important;
   border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--cms-section-foreground,var(--pf-bg))));
 }
+
+/* Four case-study achievements form a balanced 2×2 grid. */
+.portfolio-detail-facts-four{grid-template-columns:repeat(2,minmax(0,1fr))}
+.portfolio-detail-facts-four>div:nth-child(even){border-right:0}
+.portfolio-detail-facts-four>div:nth-child(-n+2){border-bottom:1px solid var(--pf-line)}
+@media(max-width:600px){.portfolio-detail-facts-four{grid-template-columns:1fr}.portfolio-detail-facts-four>div{border-right:0!important;border-bottom:1px solid var(--pf-line)}.portfolio-detail-facts-four>div:last-child{border-bottom:0}}
