@@ -111,7 +111,7 @@ export function PortfolioSection({section:s,site,onEditProject,selectedProjectSl
       <Heading section={s}/>
       <div className="portfolio-projects">
         {visibleProjects.map(project=><article
-          className={'portfolio-project'+(selectedProjectSlug===project.slug?' visual-selected-project':'')}
+          className={'portfolio-project'+(selectedProjectSlug===project.slug?' visual-selected-project':'')+(onEditProject?' visual-editable-project':'')}
           key={project.slug} data-cms-project-slug={project.slug}
           onClick={onEditProject?event=>{event.stopPropagation();onEditProject(project.slug);}:undefined}>
           {onEditProject&&<button type="button" className="visual-project-edit-action"
@@ -122,15 +122,15 @@ export function PortfolioSection({section:s,site,onEditProject,selectedProjectSl
           </div>
           {project.image&&<img className="cms-project-image" src={project.image}
             alt={project.client+' website screenshot'} loading="lazy"/>}
-          <a className="portfolio-project-title" href={'/work/'+project.slug}>
-            <h3>{project.client}</h3><span>↗</span>
-          </a>
+          <div className="portfolio-project-title">
+            <h3>{project.client}</h3>
+          </div>
           <p>{project.cardSummary??project.title}</p>
           <div className="portfolio-project-end">
             <span>{project.cardMetricValue??project.facts[0]?.value}
               <small>{project.cardMetricLabel??project.facts[0]?.label}</small>
             </span>
-            <a href={'/work/'+project.slug}>{project.cardLinkLabel||s.linkLabel||'Case study'} ↗</a>
+            <a className="portfolio-project-card-link" href={'/work/'+project.slug} onClick={onEditProject?event=>{event.preventDefault();event.stopPropagation();onEditProject(project.slug);}:undefined}>{project.cardLinkLabel||s.linkLabel||'Case study'} ↗</a>
           </div>
         </article>)}
         {visibleProjects.length===0&&<p className="cms-projects-empty">
