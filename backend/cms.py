@@ -26,12 +26,33 @@ STYLE_OVERRIDES = {
     'headingSize': (0, 160), 'headingLineHeight': (0, 3),
     'headingLetterSpacing': (-12, 12), 'headingWeight': (0, 900),
     'statValueSize': (0, 110), 'statLabelSize': (0, 50),
+    'headingColor': 'color', 'bodyColor': 'color', 'eyebrowColor': 'color',
+    'emphasisColor': 'color', 'mutedColor': 'color',
 }
 LAYOUT_OVERRIDES = {
     'columns': (0, 12), 'gap': (-1, 160),
     'split': (20, 80), 'copyMaxWidth': (0, 1200),
 }
 LAYOUT_ALIGNS = {'start', 'center', 'end'}
+BUTTON_RANGES = {'radius': (0, 48), 'paddingX': (0, 80), 'paddingY': (0, 60), 'gap': (0, 80)}
+BUTTON_COLORS = {'primaryBackground', 'primaryText', 'secondaryBackground', 'secondaryText', 'borderColor'}
+BUTTON_ALIGNMENTS = {'left', 'center', 'right'}
+BUTTON_VARIANTS = {'primary', 'outline', 'text'}
+
+
+def check_button_style(buttons):
+    if not isinstance(buttons, dict) or set(buttons) - set(BUTTON_RANGES) - BUTTON_COLORS - {'alignment'}:
+        raise ValueError('Unknown button styling options')
+    for key, value in buttons.items():
+        if key in BUTTON_RANGES:
+            if type(value) is not int or not BUTTON_RANGES[key][0] <= value <= BUTTON_RANGES[key][1]:
+                raise ValueError(f'Invalid button {key}')
+        elif key in BUTTON_COLORS:
+            if not isinstance(value, str) or (value and not re.fullmatch(r'#[0-9a-fA-F]{6}', value)):
+                raise ValueError(f'Invalid button colour {key}')
+        elif key == 'alignment' and value not in BUTTON_ALIGNMENTS:
+            raise ValueError('Unknown button alignment')
+
 
 
 def check_section_overrides(section):
@@ -54,7 +75,21 @@ def check_section_overrides(section):
         raise ValueError('Section style must be an object')
     for field, value in section['style'].items():
         if field in STYLE_OVERRIDES:
-            bounded(value, field, STYLE_OVERRIDES[field])
+            limit = STYLE_OVERRIDES[field]
+            if limit == 'color':
+                if not isinstance(value, str) or (value and not re.fullmatch(r'#[0-9a-fA-F]{6}', value)):
+                    raise ValueError(f'Invalid {field} colour')
+            else:
+                bounded(value, field, limit)
+    if 'anchor' in section:
+        anchor = section['anchor']
+        if not isinstance(anchor, str) or (anchor and not re.fullmatch(r'[a-z][a-z0-9-]{0,79}', anchor)):
+            raise ValueError('Anchor must use lowercase letters, numbers and hyphens')
+        if anchor in ('main', 'top') and anchor:
+            raise ValueError('Anchor name is reserved')
+    if 'buttonStyle' in section:
+        check_button_style(section['buttonStyle'])
+
 
 
 def validate(document):
@@ -77,6 +112,7 @@ def validate(document):
             if key == 'image' and value and not re.fullmatch(r'/content/media/[a-f0-9]{32}\.(png|jpg|webp)', value): raise ValueError('Images must use an uploaded CMS image URL')
             if key == 'imageSide' and value not in ('left', 'right'): raise ValueError('Image side must be left or right')
             if key == 'href' and not re.match(r'^(https?://|mailto:|/(?!/)|#)', value, re.I): raise ValueError('Links must use https://, http://, mailto:, / or #')
+            if key == 'variant' and value not in BUTTON_VARIANTS: raise ValueError('Unknown button variant')
             if key in ('id', 'slug') and not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,79}', value): raise ValueError(f'{key} must use lowercase letters, numbers and hyphens')
             if key in ('background', 'accent', 'muted', 'panel') or (key == 'text' and template.startswith('#')):
                 if value and not re.fullmatch(r'#[0-9a-fA-F]{6}', value): raise ValueError(f'{key} must be a six-digit hex colour')
@@ -96,10 +132,14 @@ def validate(document):
             extras = set(value) - set(template)
             if key == 'style':
                 extras.difference_update(STYLE_OVERRIDES)
+            if key in ('links', 'buttons'):
+                extras.discard('variant')
+                if 'variant' in value and value['variant'] not in BUTTON_VARIANTS:
+                    raise ValueError('Unknown button variant')
             if key in ('sections', 'projects'):
                 extras.discard('image')
                 if key == 'sections':
-                    extras.discard('layout')
+                    extras.difference_update({'layout', 'anchor', 'buttonStyle'})
                     check_section_overrides(value)
                 if 'image' in value:
                     media = value['image']
@@ -118,6 +158,9 @@ def validate(document):
     for key in ('sections', 'projects'):
         ids = [item['id' if key == 'sections' else 'slug'] for item in document[key]]
         if len(ids) != len(set(ids)): raise ValueError(f'Duplicate identifiers in {key}')
+    anchors = [section.get('anchor') or section['id'] for section in document['sections']]
+    if len(anchors) != len(set(anchors)):
+        raise ValueError('Each section must have a unique page anchor')
     return document
 
 
