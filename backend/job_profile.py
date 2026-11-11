@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-PROFILE_VERSION = 2
+PROFILE_VERSION = 3
 # Documented CV evidence: ecommerce merchandising (25k+ SKUs), Shopify,
 # BigCommerce, Akeneo PIM, Magento, SEO, paid marketing, Google Analytics,
 # conversion optimisation, website redesign and email/CRM campaigns.
@@ -211,12 +211,41 @@ def profile(title: str, description: str = "", employment: str = "",
         hours_fit = "Hours not specified"
 
     support = [label for label, pattern in SUPPORT_PATTERNS.items() if _found(spec, pattern)]
+    # Distinguish UK employment from a potentially suitable overseas contract.
+    # Global remote availability alone says nothing about payroll, tax, paid
+    # leave or whether the employer actually accepts a UK-based contractor.
+    contractor = _found(combined, r"\b(independent contractor|self.employed|freelanc\w*|b2b contract)\b")
+    if not contractor and _found(employment_low, r"\bcontract(?:or)?\b"):
+        contractor = True
+    worldwide = _found(location.lower(), r"\b(worldwide|global|anywhere|all countries)\b")
+    explicit_uk = _found(location.lower(), r"\b(united kingdom|great britain|uk remote|uk.based|remote uk)\b")
+    restricted = _found(combined, r"\b(us only|usa only|united states only|us residents only|must be based in (?:the )?(?:usa|us|united states)|uk applicants not eligible)\b")
+    if restricted:
+        uk_status = "Restriction stated — check UK eligibility"
+    elif explicit_uk:
+        uk_status = "UK location stated — verify arrangement"
+    elif worldwide:
+        uk_status = "Worldwide claim — UK terms unverified"
+    else:
+        uk_status = "UK eligibility not established from listing"
+    route = "Independent contractor" if contractor else (
+        "Employment indicated" if _found(employment_low, r"\b(permanent|employee|full.time|part.time)\b")
+        else "Engagement type unconfirmed")
+    cross_border = contractor and worldwide and not explicit_uk
     lifestyle = round(0.63 * remote_points + 0.34 * hour_points + (7 if support else 0))
     if mandatory:
         cap = {1: 58, 2: 46, 3: 34, 4: 23, 5: 12}.get(office_days, 37)
         lifestyle = min(lifestyle, cap)
+    if cross_border:
+        lifestyle = min(lifestyle, 78)
+    if restricted:
+        lifestyle = min(lifestyle, 14)
     lifestyle = max(0, min(99, lifestyle))
     overall = round(0.52 * cv + 0.48 * lifestyle)
+    if cross_border:
+        overall = min(overall, 74)  # Possible opportunity, not automatically a strong match.
+    if restricted:
+        overall = min(overall, 20)
     if mandatory:
         overall = min(overall, {1: 64, 2: 57, 3: 50, 4: 40, 5: 30}.get(office_days, 54))
         # Strong CV overlap cannot conceal an office requirement.
@@ -233,6 +262,11 @@ def profile(title: str, description: str = "", employment: str = "",
         evidence.append("Higher seniority than CV directly demonstrates")
     evidence.append(hours_fit)
     evidence.append(remote_status)
+    if cross_border:
+        evidence.append("Worldwide independent-contractor opportunity: verify UK contracting, invoicing, tax, currency and time zone; employee benefits are not assumed.")
+    if restricted:
+        evidence.append("Potential UK location restriction found in the listing; verify before applying.")
+    evidence.append(uk_status)
     if support:
         evidence.append("; ".join(support))
     return {
@@ -247,5 +281,9 @@ def profile(title: str, description: str = "", employment: str = "",
         "office_days": office_days,
         "hours_fit": hours_fit,
         "support_signals": support,
+        "engagement_route": route,
+        "uk_eligibility": uk_status,
+        "cross_border_review": cross_border,
+        "uk_restricted": restricted,
         "score_basis": "Rules-based estimate using CV evidence and listing text; not an employer or verified remote assessment.",
     }
