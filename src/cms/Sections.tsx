@@ -5,7 +5,50 @@ import {safeHref} from './model';
 export function Buttons({links=[]}:{links?:Link[]}){return <div className="portfolio-actions">{links.map((link,i)=><a key={i} href={safeHref(link.href)} className={'portfolio-button '+(i===0?'portfolio-button-primary':'portfolio-button-outline')}>{link.label} ↗</a>)}</div>;}
 function Heading({section:s}:{section:Section}){return <div className="portfolio-section-heading"><div>{s.eyebrow&&<span className="portfolio-kicker">{s.eyebrow}</span>}<h2>{s.heading}</h2></div>{s.body&&<p>{s.body}</p>}</div>;}
 export function PortfolioSection({section:s,site}:{section:Section;site:SiteContent}){
-  const style={background:s.style.background||undefined,color:s.style.text||undefined,'--pf-ink':s.style.text||undefined,'--pf-accent':s.style.accent||undefined,paddingTop:s.style.padding,paddingBottom:s.style.padding,fontSize:s.style.fontSize,textAlign:s.style.align} as CSSProperties;
+  const typography=s.style;
+  const layout=s.layout||{};
+  const itemCount=s.type==='projects'?site.projects.length:(s.items?.length||0);
+  const columns=Math.max(1,Math.min(12,layout.columns||itemCount||1));
+  const split=layout.split??50;
+  const aboutSingle=s.type==='about'&&(layout.columns===1||
+    (layout.columns===0&&!s.heading?.trim()&&!s.eyebrow?.trim()));
+  const customGrid=Boolean(layout.columns);
+  const style={
+    background:typography.background||undefined,color:typography.text||undefined,
+    '--pf-ink':typography.text||undefined,'--pf-accent':typography.accent||undefined,
+    paddingTop:typography.padding,paddingBottom:typography.padding,
+    fontSize:typography.fontSize,textAlign:typography.align,
+    '--cms-grid-columns':columns,'--cms-tablet-columns':Math.min(2,columns),
+    '--cms-layout-gap':layout.gap?layout.gap+'px':undefined,
+    '--cms-split':split+'fr '+(100-split)+'fr',
+    '--cms-layout-align':layout.verticalAlign||undefined,
+    '--cms-copy-width':layout.copyMaxWidth?layout.copyMaxWidth+'px':undefined,
+    '--cms-body-line-height':typography.lineHeight||undefined,
+    '--cms-letter-spacing':typeof typography.letterSpacing==='number'?typography.letterSpacing+'px':undefined,
+    '--cms-paragraph-spacing':typography.paragraphSpacing?typography.paragraphSpacing+'px':undefined,
+    '--cms-body-weight':typography.bodyWeight||undefined,
+    '--cms-heading-size':typography.headingSize?typography.headingSize+'px':undefined,
+    '--cms-heading-line-height':typography.headingLineHeight||undefined,
+    '--cms-heading-letter-spacing':typeof typography.headingLetterSpacing==='number'?typography.headingLetterSpacing+'px':undefined,
+    '--cms-heading-weight':typography.headingWeight||undefined,
+    '--cms-stat-value-size':typography.statValueSize?typography.statValueSize+'px':undefined,
+    '--cms-stat-label-size':typography.statLabelSize?typography.statLabelSize+'px':undefined,
+  } as CSSProperties;
+  const classes=[
+    'cms-section','cms-section-'+s.type,
+    aboutSingle?'cms-layout-single':'',
+    customGrid?'cms-layout-custom-columns':'',
+    typography.lineHeight?'cms-custom-body-line':'',
+    typeof typography.letterSpacing==='number'&&typography.letterSpacing!==0?'cms-custom-letter-spacing':'',
+    typography.paragraphSpacing?'cms-custom-paragraph-spacing':'',
+    typography.bodyWeight?'cms-custom-body-weight':'',
+    typography.headingSize?'cms-custom-heading-size':'',
+    typography.headingLineHeight?'cms-custom-heading-line':'',
+    typeof typography.headingLetterSpacing==='number'&&typography.headingLetterSpacing!==0?'cms-custom-heading-spacing':'',
+    typography.headingWeight?'cms-custom-heading-weight':'',
+    typography.statValueSize?'cms-custom-stat-value':'',
+    typography.statLabelSize?'cms-custom-stat-label':'',
+  ].filter(Boolean).join(' ');
   let content;
   switch(s.type){
     case 'hero':content=<div className="portfolio-container portfolio-hero"><div className="portfolio-hero-topline"><span className="portfolio-overline">{s.eyebrow}</span><span className="portfolio-hero-index">{s.index}</span></div><h1>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h1><div className="portfolio-hero-bottom"><div className="portfolio-hero-intro"><p>{s.body}</p><span>{s.caption}</span></div><Buttons links={s.buttons}/></div></div>;break;
@@ -25,5 +68,5 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
     case 'contact':content=<div className="portfolio-container portfolio-contact-inner"><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h2><div className="portfolio-contact-bottom"><p>{s.body}</p><Buttons links={s.buttons}/></div>{s.email&&<a className="portfolio-contact-email" href={'mailto:'+s.email}>{s.email}</a>}</div>;break;
     default:content=<div className="portfolio-container cms-text"><h1>{s.heading}</h1><p>{s.body}</p><Buttons links={s.buttons}/></div>;
   }
-  return <section id={s.id} className={'cms-section cms-section-'+s.type} style={style}>{content}{s.image&&!['image','image_text'].includes(s.type)&&<div className="portfolio-container"><img className="cms-section-image" src={s.image} alt={s.heading||"Portfolio screenshot"} loading="lazy"/></div>}</section>;
+  return <section id={s.id} className={classes} style={style}>{content}{s.image&&!['image','image_text'].includes(s.type)&&<div className="portfolio-container"><img className="cms-section-image" src={s.image} alt={s.heading||"Portfolio screenshot"} loading="lazy"/></div>}</section>;
 }
