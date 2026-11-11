@@ -98,10 +98,12 @@ function Field({
    if(name==='href')return <div className="visual-field visual-link-field">
      <label>Link destination</label>
      <select aria-label="Choose section to scroll to"
-       value={anchorOptions.some(a=>'#'+a.id===value)?value:'custom'}
+       value={anchorOptions.some(a=>(sectionType?'#':'/#')+a.id===value)?value:'custom'}
        onChange={e=>{if(e.target.value!=='custom')onChange(e.target.value);}}>
        <option value="custom">External URL, email or custom path</option>
-       {anchorOptions.map(a=><option key={a.id} value={'#'+a.id}>Scroll to {a.label} (#{a.id})</option>)}
+       {anchorOptions.map(a=><option key={a.id} value={(sectionType?'#':'/#')+a.id}>
+         Scroll to {a.label} ({(sectionType?'#':'/#')+a.id})
+       </option>)}
      </select>
      <input aria-label="Link URL" value={value} onChange={e=>onChange(e.target.value)}
        placeholder="#contact or https://example.com"/>
@@ -329,7 +331,9 @@ export function CmsEditor({csrf}:{csrf:string}){
      return;
    }
    const previous=section.anchor||section.id;
-   const retarget=(link:Link):Link=>link.href==='#'+previous?{...link,href:'#'+anchor}:link;
+   const retarget=(link:Link):Link=>
+     link.href==='#'+previous?{...link,href:'#'+anchor}:
+     link.href==='/#'+previous?{...link,href:'/#'+anchor}:link;
    const sections=draft.sections.map(s=>({
      ...s,
      ...(s.id===section.id?{anchor}:{}),
