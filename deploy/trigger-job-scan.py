@@ -9,7 +9,7 @@ import time
 
 instance = os.environ["INSTANCE_ID"]
 region = os.environ["AWS_REGION"]
-commands = ["""set -euo pipefail
+commands = ["""set -eu
 cd /opt/ryanfitter-portfolio
 runuser -u ryanfitter-admin -- /opt/ryanfitter-portfolio/.venv/bin/python -m backend.run_job_scan
 """]
