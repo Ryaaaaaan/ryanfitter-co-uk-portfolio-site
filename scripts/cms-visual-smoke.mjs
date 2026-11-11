@@ -78,8 +78,34 @@ try{
   assert(await page.locator('.visual-preview-section').count()>=6,'Starter blocks did not render');
   await page.locator('.visual-preview-section').first().click();
   const field=page.getByLabel('Heading',{exact:true});
+  // Content fields follow the rendered hierarchy, not JSON insertion order.
+  const contentOrder=await page.locator('.visual-inspector-body .visual-fieldset').first()
+    .locator(':scope > label.visual-field').evaluateAll(nodes=>
+      nodes.map(node=>node.textContent.trim().split('\\n')[0].trim()));
+  const orderedIndex=(name)=>contentOrder.findIndex(value=>value.startsWith(name));
+  assert(orderedIndex('Eyebrow')>=0&&orderedIndex('Eyebrow')<orderedIndex('Heading'),
+    'Small eyebrow should appear ahead of the large heading');
+  assert(orderedIndex('Heading')<orderedIndex('Body'),
+    'Large heading should appear ahead of the supporting body copy');
+  // Pressing Enter in a heading creates a real displayed line break.
+  await field.fill('A properly live\\npreview');
+  const heroHeading=page.locator('.portfolio-hero h1');
+  assert((await heroHeading.innerText()).includes('\\n'),'Heading line break not visible');
+  assert.equal(await heroHeading.evaluate(el=>getComputedStyle(el).whiteSpace),'pre-line');
   await field.fill('A properly live preview');
-  assert((await page.locator('.portfolio-hero h1').innerText()).includes('A properly live preview'));
+  assert((await heroHeading.innerText()).includes('A properly live preview'));
+
+  // Section palette only changes this block, not the global site theme.
+  await page.getByRole('button',{name:'Block theme Forest'}).click();
+  const heroSection=page.locator('.cms-section-hero');
+  assert.equal(await heroSection.evaluate(el=>getComputedStyle(el).backgroundColor),
+    'rgb(23, 55, 42)');
+  const heroThemeText=await heroHeading.evaluate(el=>getComputedStyle(el).color);
+  assert.equal(heroThemeText,'rgb(242, 248, 242)');
+  await page.getByRole('button',{name:'Block theme Inherit'}).click();
+  assert.equal(await heroSection.evaluate(el=>getComputedStyle(el).backgroundColor),
+    'rgba(0, 0, 0, 0)');
+  await page.getByRole('button',{name:'Block theme Forest'}).click();
 
   // Save, reload and publish-style rehydration must not bring back a starter prompt.
   await Promise.all([
