@@ -1,0 +1,102 @@
+[
+  {
+    "enabled": true,
+    "type": "image_text",
+    "id": "image-and-text",
+    "heading": "A closer look at the work",
+    "body": "What changed, how it worked and the results.",
+    "image": "",
+    "caption": "",
+    "imageSide": "right",
+    "buttons": [
+      {
+        "label": "Explore projects",
+        "href": "#work"
+      }
+    ],
+    "style": {
+      "background": "",
+      "text": "",
+      "accent": "",
+      "padding": 70,
+      "fontSize": 16,
+      "align": "left"
+    }
+  },
+  {
+    "enabled": true,
+    "type": "gallery",
+    "id": "image-gallery",
+    "heading": "Project screenshots",
+    "body": "A selection of real interfaces and storefronts.",
+    "items": [
+      {
+        "image": "",
+        "caption": "Screenshot one"
+      },
+      {
+        "image": "",
+        "caption": "Screenshot two"
+      }
+    ],
+    "style": {
+      "background": "",
+      "text": "",
+      "accent": "",
+      "padding": 70,
+      "fontSize": 16,
+      "align": "left"
+    }
+  },
+  {
+    "enabled": true,
+    "type": "testimonial",
+    "id": "testimonial",
+    "heading": "A note from a collaborator",
+    "body": "Add a genuine quotation, with permission.",
+    "author": "",
+    "role": "",
+    "style": {
+      "background": "",
+      "text": "",
+      "accent": "",
+      "padding": 70,
+      "fontSize": 16,
+      "align": "left"
+    }
+  },
+  {
+    "enabled": true,
+    "type": "cta",
+    "id": "call-to-action",
+    "heading": "Interested in working together?",
+    "body": "Let's discuss ecommerce merchandising, UX and site optimisation.",
+    "buttons": [
+      {
+        "label": "Get in touch",
+        "href": "#contact"
+      }
+    ],
+    "style": {
+      "background": "",
+      "text": "",
+      "accent": "",
+      "padding": 70,
+      "fontSize": 16,
+      "align": "left"
+    }
+  },
+  {
+    "enabled": true,
+    "type": "divider",
+    "id": "divider",
+    "style": {
+      "background": "",
+      "text": "",
+      "accent": "",
+      "padding": 25,
+      "fontSize": 16,
+      "align": "left"
+    }
+  }
+]

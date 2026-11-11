@@ -52,3 +52,32 @@ logout denies access, and Pokémon and Trading Lab still work. Browser QA could 
 be completed in the implementation workspace because its browser cannot reach the
 local preview server. Automated backend tests and frontend build are the available
 implementation checks.
+
+
+## Visual builder (LOPT-style)
+
+The previous settings-led editor has been replaced by a responsive three-panel CMS,
+adapted from the existing LOPT marketing CMS at admin.getlopt.co.uk:
+
+1. **Left rail**: choose Home or Case Study pages, select/drag/reorder sections, add sections, manage header/footer and settings.
+2. **Live draft stage**: render the *same public React components* as the published site, update instantly as you type, click a rendered section to edit it, switch Desktop/Tablet/Mobile and expand for focused preview.
+3. **Right inspector**: edit selected text, links, buttons, content arrays, colours with pickers, spacing and font sizes with sliders, optional image layouts, header and footer.
+4. **Media picker**: open directly from any section or project image control, upload private screenshot or select an existing image.
+5. **Templates**: choose Professional Portfolio or Blank Slate; the selection immediately updates the stage and selects the first editable section, with an Undo action for the previous draft. A starter never changes the public website until Publish.
+
+Home sections now include text, hero, stats, projects, expertise, about, contact,
+image, image+text, image gallery, testimonial, call-to-action and spacer/divider.
+Case study pages use the same public ProjectDetail component in both preview and
+live output, avoiding mock preview discrepancies. The current site only has a
+homepage and case-study routes: it does not gain unrelated LOPT marketing pricing
+or signup pages.
+
+Saving is explicit. The editor retains private draft/revision locking and
+requires confirmation on Publish. An unsaved-change guard prevents accidental
+navigation. Template loading never auto-publishes, and the existing minimalist
+homepage stays published until the owner chooses to replace it.
+
+Browser notes: mobile preview forces key responsive layout rules inside the
+scaled stage, but final checks on a real mobile device are still important.
+The media library accepts PNG/JPEG/WebP images up to 5 MiB; videos are not
+supported in this revision.

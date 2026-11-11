@@ -152,7 +152,7 @@ export function JobMatches({csrf}:{csrf:string}){
         {name:'Reed',status:'requires API credentials',matched:0},
         {name:'Adzuna',status:'requires API credentials',matched:0}
       ]).map(s=><div key={s.name} className="matches-health-source">
-        <strong>{s.name}</strong><span className={'matches-health-status '+s.status}>{s.status.replaceAll('_',' ')}</span>
+        <strong>{s.name}</strong><span className={'matches-health-status '+s.status}>{s.status.replace(/_/g,' ')}</span>
         <span>{s.status==='success'?s.matched+' matching results':'—'}</span>
         {s.detail&&<small>{s.detail}</small>}
       </div>)}
