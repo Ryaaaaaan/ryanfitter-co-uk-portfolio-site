@@ -136,58 +136,8 @@
       "note": "This describes my work during my employment. The live website and its current implementation may have changed since then."
     },
     {
-      "slug": "lbs-horticulture",
-      "number": "03",
-      "client": "LBS Horticulture",
-      "descriptor": "B2B and B2C / Magento 2",
-      "date": "2019 — 2021",
-      "title": "Helping launch LoveGardening while supporting established B2B ecommerce.",
-      "summary": "Supported the day-to-day running of an established B2B ecommerce operation and contributed to the launch of LoveGardening, a separate Magento 2 consumer storefront.",
-      "tools": [
-        "Magento 2",
-        "B2B ecommerce",
-        "B2C store launch",
-        "On-page SEO",
-        "Product merchandising",
-        "Website UX"
-      ],
-      "facts": [
-        {
-          "value": "Magento 2",
-          "label": "B2C storefront launched"
-        },
-        {
-          "value": "4-person",
-          "label": "B2C launch team"
-        },
-        {
-          "value": "B2B + B2C",
-          "label": "Ecommerce operations supported"
-        }
-      ],
-      "challenge": "Alongside ongoing B2B trading and catalogue work, the business wanted to bring its horticultural range to a consumer audience through a distinct ecommerce storefront.",
-      "work": [
-        "Managed day-to-day B2B ecommerce website operations, product content and online merchandising.",
-        "Worked as part of a four-person team on the LoveGardening Magento 2 B2C website launch.",
-        "Supported product-page content, onsite usability and customer journeys across the B2B and B2C websites.",
-        "Contributed to on-page SEO and website optimisation alongside routine trading activity."
-      ],
-      "result": "Helped deliver a new consumer-facing Magento 2 shopping experience while continuing to support the existing B2B operation. The launch was a collaborative team effort; the project is presented through the responsibilities I held rather than confidential company revenue figures.",
-      "links": [
-        {
-          "label": "LBS Horticulture",
-          "href": "https://lbshorticulture.co.uk"
-        },
-        {
-          "label": "LoveGardening",
-          "href": "https://lovegardening.com"
-        }
-      ],
-      "note": "This describes work undertaken during my employment, not the current implementation of these websites."
-    },
-    {
       "slug": "style-cafe",
-      "number": "04",
+      "number": "03",
       "client": "Style Cafe",
       "descriptor": "Digital marketing / Shopify",
       "date": "2022 — 2023",
@@ -225,6 +175,63 @@
       "result": "Reported a conversion-rate increase of 1.8% and a bounce-rate reduction of 2%, alongside more than 25% lower Google Ads expenditure with click-through rate maintained. The original reporting does not specify whether the conversion and bounce-rate changes were relative percentages or percentage points, so they are described as reported changes rather than percentage-point gains.",
       "links": [],
       "note": "Historical results from my employment, as summarised in my CV. Metrics are rounded and should not be interpreted as current company performance."
+    },
+    {
+      "slug": "lbs-horticulture",
+      "number": "04",
+      "client": "LBS Horticulture",
+      "descriptor": "B2B and B2C / Magento 2",
+      "date": "2019 — 2021",
+      "title": "Helping launch LoveGardening while supporting established B2B ecommerce.",
+      "summary": "Supported the day-to-day running of an established B2B ecommerce operation and contributed to the launch of LoveGardening, a separate Magento 2 consumer storefront.",
+      "tools": [
+        "Magento 2",
+        "B2B ecommerce",
+        "B2C store launch",
+        "On-page SEO",
+        "Product merchandising",
+        "Website UX"
+      ],
+      "facts": [
+        {
+          "value": "~27%",
+          "label": "B2B year-on-year revenue growth (rounded)"
+        },
+        {
+          "value": "3 months",
+          "label": "LoveGardening D2C build to launch"
+        },
+        {
+          "value": "Magento 2",
+          "label": "B2C storefront platform"
+        },
+        {
+          "value": "4-person",
+          "label": "website launch team"
+        }
+      ],
+      "challenge": "Alongside ongoing B2B trading and catalogue work, the business wanted to bring its horticultural range to a consumer audience through a distinct ecommerce storefront.",
+      "work": [
+        "Managed day-to-day B2B ecommerce website operations, product content and online merchandising.",
+        "Contributed within a four-person team to building and launching LoveGardening, a Magento 2 D2C website, over three months.",
+        "Supported product-page content, onsite usability and customer journeys across the B2B and B2C websites.",
+        "Contributed to on-page SEO and website optimisation alongside routine trading activity."
+      ],
+      "result": "Supported the established B2B ecommerce operation during approximately 27% year-on-year revenue growth, while contributing within a four-person team to the LoveGardening Magento 2 D2C build and launch over three months. These are business and team outcomes rather than results attributable to me alone.",
+      "links": [
+        {
+          "label": "LBS Horticulture",
+          "href": "https://lbshorticulture.co.uk"
+        },
+        {
+          "label": "LoveGardening",
+          "href": "https://lovegardening.com"
+        }
+      ],
+      "note": "This describes work undertaken during my employment, not the current implementation of these websites.",
+      "cardSummary": "Supported B2B ecommerce growth and helped a four-person team launch the LoveGardening Magento 2 D2C store.",
+      "cardMetricValue": "3 months",
+      "cardMetricLabel": "D2C build to launch"
     }
   ],
   "sections": [
@@ -304,7 +311,10 @@
       "heading": "Real work. Real retail.",
       "body": "From getting a new Shopify store off the ground to managing the details behind established e-commerce operations.",
       "linkLabel": "Case study",
-      "note": "Projects describe my contribution during the periods shown. Current websites may have evolved since then."
+      "note": "Projects describe my contribution during the periods shown. Current websites may have evolved since then.",
+      "layout": {
+        "columns": 2
+      }
     },
     {
       "id": "expertise",
