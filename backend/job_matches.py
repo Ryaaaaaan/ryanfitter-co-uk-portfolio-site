@@ -129,7 +129,8 @@ def score_match(title, description, employment, hours, confidence):
         score -= 23
     if confidence == "review":
         score -= 6
-    # Keep weaker-but-relevant roles in Explore instead of hiding them.\n    return min(100, max(0, score)) if score >= 40 else None
+    # Keep weaker-but-relevant roles in Explore instead of hiding them.
+    return min(100, max(0, score)) if score >= 40 else None
 
 
 def normalize(job):
