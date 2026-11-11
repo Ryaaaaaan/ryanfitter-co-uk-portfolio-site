@@ -25,6 +25,8 @@ jobs:
           node-version: "22"
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Typecheck CMS and dashboard
+        run: npx tsc --noEmit
       - name: Build
         run: npm run build
 
