@@ -1,6 +1,6 @@
 """Private, deduplicated UK-remote ecommerce job matches and scheduled feed scanner.
 
-Sources: Himalayas and Remotive public job APIs. Never claim an employer's
+Sources: Himalayas, Remotive and Jobicy public job APIs. Never claim an employer's
 working pattern is verified solely because a job board classifies it 'remote'.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 import requests
 
-SEARCH_TERMS = ("ecommerce", "digital marketing", "shopify", "seo", "merchandising")
+SEARCH_TERMS = ("ecommerce", "digital marketing", "shopify", "seo", "merchandising", "email marketing", "product data", "crm")
 ROLE_WORDS = ("ecommerce", "e-commerce", "digital marketing", "merchandis", "online trading",
               "shopify", "seo", "crm", "email marketing", "marketplace", "web analyst",
               "website", "digital content", "digital trading", "growth marketing",
@@ -129,7 +129,7 @@ def score_match(title, description, employment, hours, confidence):
         score -= 23
     if confidence == "review":
         score -= 6
-    return min(100, max(0, score)) if score >= 67 else None
+    # Keep weaker-but-relevant roles in Explore instead of hiding them.\n    return min(100, max(0, score)) if score >= 40 else None
 
 
 def normalize(job):
@@ -151,7 +151,7 @@ def normalize(job):
         "apply_url": url, "source": plain(job.get("source", ""))[:120],
         "hours": h or hours, "employment_type": employment,
         "location": plain(job.get("location", ""))[:160],
-        "score": s, "reason": plain(job.get("reason", ""))[:500] or "Role aligns with ecommerce and digital marketing expertise.",
+        "score": s, "reason": plain(job.get("reason", ""))[:500] or ("Relevant ecommerce/digital responsibilities; check workload and flexibility." if s >= 70 else "Broader related role; may require more hours, skills or travel than preferred."),
         "warning": plain(job.get("warning", ""))[:500] or "Confirm UK eligibility, hours and remote arrangements directly.",
         "confidence": confidence, "posted": str(job.get("posted", ""))[:10],
         "salary": plain(job.get("salary", ""))[:120],
@@ -346,6 +346,61 @@ def remotive_jobs():
     return results
 
 
+def jobicy_jobs():
+    """Discover UK-possible roles via Jobicy's official seven-day public feed."""
+    results = []
+    # Europe and Anywhere cover UK candidates; employer eligibility still needs checking.
+    for geo in ("europe", "anywhere"):
+        response = requests.get(
+            "https://jobicy.com/api/jobs",
+            params={"count": 100, "geo": geo, "industry": "marketing"},
+            headers={"User-Agent": "RyanFitterPrivateJobScout/1.0 (+https://ryanfitter.co.uk)"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("Unexpected Jobicy response.")
+        for row in payload.get("jobs", []):
+            if not isinstance(row, dict):
+                continue
+            location = str(row.get("jobGeo") or "")
+            if not re.search(r"\\b(?:united kingdom|great britain|uk|europe|anywhere|worldwide)\\b", location.lower()):
+                continue
+            url = row.get("url")
+            if not valid_link(url):
+                continue
+            title = row.get("jobTitle", "")
+            employment = row.get("jobType", "")
+            if isinstance(employment, list):
+                employment = ", ".join(x for x in employment if isinstance(x, str))
+            salary = ""
+            currency = str(row.get("salaryCurrency") or "")
+            minimum, maximum = row.get("salaryMin"), row.get("salaryMax")
+            if isinstance(minimum, (int,float)) or isinstance(maximum, (int,float)):
+                amounts = [x for x in (minimum, maximum) if isinstance(x,(int,float))]
+                mark = {"GBP":"£","USD":"$","EUR":"€"}.get(currency, currency+" ")
+                salary = mark + "–".join(f"{x:,.0f}" for x in amounts)
+                salary += " / " + str(row.get("salaryPeriod") or "period not stated")
+            description = plain(row.get("jobDescription", "") or row.get("jobExcerpt", ""))
+            published = str(row.get("pubDate") or "")[:10]
+            caution = ("Jobicy categorises this as remote and eligible for " + location +
+                       "; confirm UK hiring, zero compulsory office visits and hours.")
+            if any(q in description.lower() for q in ("hybrid", "office attendance", "travel required", "on-site")):
+                caution = "Job description may involve office attendance/travel; verify before applying."
+            item = normalize({
+                "title": title, "company": row.get("companyName", ""),
+                "apply_url": url, "source": "Jobicy",
+                "description": description, "hours": "",
+                "employment_type": employment, "location": location,
+                "salary": salary, "posted": published, "confidence": "review",
+                "warning": caution
+            })
+            if item:
+                results.append(item)
+    return results
+
+
 def scan(store, run_id=None):
     # Claims across workers and scheduled SSM invocations use a transactional lock.
     if run_id is None:
@@ -353,7 +408,7 @@ def scan(store, run_id=None):
     errors = []
     sources_ok = 0
     matched = {}
-    for label, operation in (("Himalayas", himalayas_jobs), ("Remotive", remotive_jobs)):
+    for label, operation in (("Himalayas", himalayas_jobs), ("Remotive", remotive_jobs), ("Jobicy", jobicy_jobs)):
         try:
             rows = operation()
             sources_ok += 1
