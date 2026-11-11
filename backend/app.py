@@ -18,6 +18,8 @@ from threading import Thread
 from backend.cms import ContentStore
 from backend.jobs import JobStore
 from backend.job_matches import MatchStore, scan as scan_matches
+from backend.cv_vault import CvVault
+from backend.interviews import InterviewStore, to_ical
 from backend.uploads import ImageLibrary, published_image_urls
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
@@ -71,6 +73,9 @@ def create_app() -> Flask:
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     matches = MatchStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
+    cv = CvVault(os.environ.get("CV_DIRECTORY", "/var/lib/ryanfitter-admin/cvs"),
+                 os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    interviews = InterviewStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
 
     app.secret_key = secret
     app.config.update(
@@ -244,6 +249,97 @@ def create_app() -> Flask:
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
+
+    @app.route("/admin/api/cvs", methods=["GET", "POST"])
+    def cvs_api():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"documents": cv.list()})
+        if not can_write():
+            abort(403)
+        try:
+            return jsonify({"documents": cv.upload(request.files.get("file"), request.form.get("label", ""))}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.get("/admin/api/cvs/<cv_id>/download")
+    def download_cv(cv_id):
+        if not signed_in():
+            abort(401)
+        item = cv.lookup(cv_id)
+        if not item:
+            abort(404)
+        metadata, path = item
+        response = send_file(path, mimetype=metadata["mime"], as_attachment=True,
+                             download_name=metadata["filename"], max_age=0)
+        response.headers["Cache-Control"] = "no-store, private"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    @app.post("/admin/api/cvs/<cv_id>/primary")
+    def mark_cv_primary(cv_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403)
+        try:
+            cv.set_primary(cv_id)
+        except LookupError:
+            abort(404)
+        return jsonify({"documents": cv.list()})
+
+    @app.delete("/admin/api/cvs/<cv_id>")
+    def delete_cv(cv_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403)
+        try:
+            cv.delete(cv_id)
+        except LookupError:
+            abort(404)
+        return jsonify({"documents": cv.list()})
+
+    @app.route("/admin/api/interviews", methods=["GET", "POST"])
+    def interviews_api():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"events": interviews.list()})
+        if not can_write():
+            abort(403)
+        try:
+            return jsonify({"event": interviews.add(request.get_json(silent=True))}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.route("/admin/api/interviews/<int:event_id>", methods=["PUT", "DELETE"])
+    def interview_api(event_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403)
+        try:
+            if request.method == "DELETE":
+                interviews.delete(event_id)
+                return "", 204
+            return jsonify({"event": interviews.update(event_id, request.get_json(silent=True))})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except LookupError:
+            abort(404)
+
+    @app.get("/admin/api/interviews/calendar.ics")
+    def interview_calendar():
+        if not signed_in():
+            abort(401)
+        from flask import Response
+        response = Response(to_ical(interviews.list()), mimetype="text/calendar")
+        response.headers["Content-Disposition"] = 'attachment; filename="ryanfitter-interviews.ics"'
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
     @app.get("/admin/api/job-matches")
     def list_job_matches():
         if not signed_in():
@@ -389,6 +485,8 @@ def create_app() -> Flask:
     @app.get("/admin/cms")
     @app.get("/admin/jobs")
     @app.get("/admin/job-matches")
+    @app.get("/admin/cvs")
+    @app.get("/admin/interviews")
     def dashboard():
         if not signed_in():
             return redirect("/admin/login", 302)
