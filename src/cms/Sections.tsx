@@ -44,7 +44,7 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
     fontSize:typography.fontSize,textAlign:typography.align,
     '--cms-grid-columns':columns,'--cms-tablet-columns':Math.min(2,columns),
     '--cms-layout-gap':typeof layout.gap==='number'&&layout.gap>=0?layout.gap+'px':undefined,
-    '--cms-split':split+'fr '+(100-split)+'fr',
+    '--cms-split':typeof layout.split==='number'?split+'fr '+(100-split)+'fr':undefined,
     '--cms-layout-align':layout.verticalAlign||undefined,
     '--cms-copy-width':layout.copyMaxWidth?layout.copyMaxWidth+'px':undefined,
     '--cms-body-line-height':typography.lineHeight||undefined,
