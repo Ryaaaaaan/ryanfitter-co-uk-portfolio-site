@@ -490,3 +490,14 @@ html{scroll-behavior:smooth}
 .cms-section .portfolio-expertise-num{
   color:var(--pf-muted);
 }
+
+/* Use contrasting default button colours when a block gets its own palette.
+   Explicit per-button colours always take precedence. */
+.cms-section .portfolio-button-primary{
+  color:var(--cms-btn-primary-text,var(--cms-section-background,#ffffff))!important;
+}
+.cms-section.cms-section-contact .portfolio-button-primary{
+  background:var(--cms-btn-primary-bg,var(--cms-section-foreground,var(--pf-bg)));
+  color:var(--cms-btn-primary-text,var(--cms-section-background,var(--pf-ink)))!important;
+  border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--cms-section-foreground,var(--pf-bg))));
+}
