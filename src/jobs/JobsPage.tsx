@@ -102,7 +102,7 @@ export function JobsPage({csrf}:{csrf:string}){
   </label>;
   return <div className="jobs-workspace">
     <div className="jobs-heading">
-      <div><h2>Applications</h2><p>Track vacancies, conversations and follow-ups. Your data stays in your private dashboard.</p></div>
+      <div><h2>Applications</h2><p>Track vacancies, conversations and follow-ups. Your data stays in your private dashboard.</p></div><div className="jobs-form-actions"><a href="/admin/cvs" className="jobs-action-link">My CVs ↗</a><a href="/admin/interviews" className="jobs-action-link">Interview calendar ↗</a></div>
       <button className="jobs-primary" type="button" onClick={()=>start()}>+ Add application</button>
     </div>
     <div className="jobs-stats">
