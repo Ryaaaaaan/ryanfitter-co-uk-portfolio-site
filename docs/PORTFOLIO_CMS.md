@@ -8,8 +8,7 @@ Sign in at `/admin/cms`. Text, hero, stats, projects, expertise, about and conta
 components support editable text, links, visibility, ordering, colours, alignment,
 spacing and base font size. Global theme settings include colours, font family and
 content width. Header/footer text and links and project case-study data are editable.
-Component-specific heading sizes still use the responsive design. Arbitrary CSS,
-HTML and image uploads are not supported by this editor.
+Component-specific heading sizes still use the responsive design. Arbitrary CSS or HTML is not supported. PNG/JPEG/WebP screenshot uploads (maximum 5 MB) are available in the Media tab. Paste a screenshot URL into a section or project image field; it stays private until that page is published.
 
 Save draft persists privately; Preview draft renders those edits; Save & publish
 saves and publishes them. Loading the original portfolio or resetting to the blank
@@ -24,7 +23,7 @@ require an allowlisted signed session, CSRF header, exact origin and matching re
 Only `/content/site.json` is public. SQLite survives service restarts and deployments,
 but is not an off-instance backup. Deployment takes a local SQLite snapshot when it
 exists. Arrange separate backups before relying on this for irreplaceable content.
-The job tracker and task board remain planned.
+The job tracker is now implemented at `/admin/jobs`; the work board remains planned. Screenshot files are stored privately in `/var/lib/ryanfitter-admin/media`, outside the checkout.
 
 ## Deploy to the established EC2 host
 
