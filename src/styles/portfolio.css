@@ -283,3 +283,67 @@
   .cms-section .portfolio-about,
   .cms-section .cms-image-text{grid-template-columns:minmax(0,1fr);gap:var(--cms-layout-gap,27px)}
 }
+
+
+/* Every editable CMS block inherits the site theme, with explicit per-block
+   overrides applied to all appropriate descendants (including dark contact). */
+.cms-site .cms-section{scroll-margin-top:90px}
+.cms-section .portfolio-kicker,
+.cms-section .portfolio-overline,
+.cms-section .portfolio-expertise-num,
+.cms-section .portfolio-project-title>span,
+.cms-section .portfolio-project-end>a{
+  color:var(--cms-eyebrow-color,var(--pf-accent));
+}
+.cms-section.cms-override-heading-color :is(h1,h2,h3){
+  color:var(--cms-heading-color);
+}
+.cms-section.cms-override-body-color :is(
+  p,blockquote,.portfolio-proof-grid span,.portfolio-project-end small,
+  .portfolio-expertise-grid p,.portfolio-work-caveat,
+  .portfolio-hero-intro>span,.portfolio-contact-email,figcaption
+){
+  color:var(--cms-body-color);
+}
+.cms-section.cms-override-eyebrow-color :is(
+  .portfolio-kicker,.portfolio-overline,.portfolio-expertise-num,
+  .portfolio-project-title>span,.portfolio-project-end>a
+){
+  color:var(--cms-eyebrow-color,var(--pf-accent));
+}
+.cms-section :is(h1,h2) em{
+  color:var(--cms-emphasis-color,var(--pf-accent));
+}
+.cms-section :is(.portfolio-button,.portfolio-button-primary,.portfolio-button-outline,.portfolio-button-text){
+  border-radius:var(--cms-btn-radius,5px);
+  padding:var(--cms-btn-pad-y,15px) var(--cms-btn-pad-x,19px);
+  gap:var(--cms-btn-gap,26px);
+}
+.cms-section .portfolio-button-primary{
+  background:var(--cms-btn-primary-bg,var(--pf-ink));
+  border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--pf-ink)));
+  color:var(--cms-btn-primary-text,#ffffff)!important;
+}
+.cms-section.cms-section-contact .portfolio-button-primary{
+  background:var(--cms-btn-primary-bg,var(--pf-bg));
+  border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--pf-bg)));
+  color:var(--cms-btn-primary-text,var(--pf-ink))!important;
+}
+.cms-section .portfolio-button-outline{
+  background:var(--cms-btn-secondary-bg,transparent);
+  border-color:var(--cms-btn-border-color,currentColor);
+  color:var(--cms-btn-secondary-text,inherit)!important;
+}
+.cms-section .portfolio-button-text{
+  background:transparent;
+  border-color:transparent;
+  color:var(--cms-btn-secondary-text,var(--pf-accent))!important;
+  text-decoration:underline;
+  text-underline-offset:4px;
+}
+.cms-section .portfolio-button-primary:hover{
+  filter:brightness(1.12);
+}
+.cms-section .portfolio-button-outline:hover{filter:brightness(.97)}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
