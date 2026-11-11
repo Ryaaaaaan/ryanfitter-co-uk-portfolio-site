@@ -146,7 +146,7 @@ function Field({
    const isHeading=['heading','emphasis','client','title'].includes(name);
    const multiline=isHeading||['body','description','summary','challenge','result','note','text','caption'].includes(name)||value.length>125;
    return <label className="visual-field">{pretty(name)}
-    {multiline?<textarea rows={isHeading?3:4} value={value} onChange={e=>onChange(e.target.value)}/>:
+    {multiline?<textarea rows={isHeading?3:4} aria-label={pretty(name)} value={value} onChange={e=>onChange(e.target.value)}/>:
     <input value={value} onChange={e=>onChange(e.target.value)}/>}
     {isHeading&&<small>Press Enter to control where the heading breaks onto a new line.</small>}
    </label>;
