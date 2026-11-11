@@ -149,7 +149,7 @@ class MatchStoreTest(unittest.TestCase):
                     job("Worldwide", [], ["UTC-05:00"]),
                     job("USOnly", [{"alpha2":"US"}], []),
                 ]}
-        with patch("backend.job_matches.SEARCH_TERMS", ("ecommerce",)), \\
+        with patch("backend.job_matches.SEARCH_TERMS", ("ecommerce",)), \
              patch("backend.job_matches.requests.get", return_value=Reply()):
             found = himalayas_jobs()
         self.assertEqual(len(found), 2)
