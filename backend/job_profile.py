@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-PROFILE_VERSION = 3
+PROFILE_VERSION = 4
 # Documented CV evidence: ecommerce merchandising (25k+ SKUs), Shopify,
 # BigCommerce, Akeneo PIM, Magento, SEO, paid marketing, Google Analytics,
 # conversion optimisation, website redesign and email/CRM campaigns.
@@ -218,16 +218,24 @@ def profile(title: str, description: str = "", employment: str = "",
     if not contractor and _found(employment_low, r"\bcontract(?:or)?\b"):
         contractor = True
     worldwide = _found(location.lower(), r"\b(worldwide|global|anywhere|all countries)\b")
-    explicit_uk = _found(location.lower(), r"\b(united kingdom|great britain|uk remote|uk.based|remote uk)\b")
+    explicit_uk = _found(
+        location.lower(),
+        r"\b(united kingdom|great britain|uk remote|uk.based|remote uk|uk.eligible|gb.listed|gb.eligible)\b"
+    )
     restricted = _found(combined, r"\b(us only|usa only|united states only|us residents only|must be based in (?:the )?(?:usa|us|united states)|uk applicants not eligible)\b")
     if restricted:
-        uk_status = "Restriction stated — check UK eligibility"
+        uk_group = "restricted"
+        uk_status = "Restriction stated — verify UK eligibility"
     elif explicit_uk:
-        uk_status = "UK location stated — verify arrangement"
+        uk_group = "uk_listed"
+        uk_status = "UK listed as eligible — employment terms still unverified"
     elif worldwide:
-        uk_status = "Worldwide claim — UK terms unverified"
+        uk_group = "worldwide"
+        uk_status = "Worldwide remote — no UK-specific employment terms confirmed"
     else:
+        uk_group = "unverified"
         uk_status = "UK eligibility not established from listing"
+    source_himalayas = (source or "").lower() == "himalayas"
     route = "Independent contractor" if contractor else (
         "Employment indicated" if _found(employment_low, r"\b(permanent|employee|full.time|part.time)\b")
         else "Engagement type unconfirmed")
@@ -236,14 +244,31 @@ def profile(title: str, description: str = "", employment: str = "",
     if mandatory:
         cap = {1: 58, 2: 46, 3: 34, 4: 23, 5: 12}.get(office_days, 37)
         lifestyle = min(lifestyle, cap)
+    # Geography is a working-arrangement factor, not a judgement about the
+    # nationality of the employer. The provider does not supply headquarters
+    # country, and UK-eligible listings are NOT proof of UK payroll.
+    geography_adjustment = 0
+    if uk_group == "worldwide":
+        geography_adjustment = -10
+    elif uk_group == "unverified":
+        geography_adjustment = -7
+    lifestyle += geography_adjustment
     if cross_border:
-        lifestyle = min(lifestyle, 78)
+        lifestyle = min(lifestyle, 74)
     if restricted:
         lifestyle = min(lifestyle, 14)
     lifestyle = max(0, min(99, lifestyle))
     overall = round(0.52 * cv + 0.48 * lifestyle)
+    # Give the comparatively wide-ranging Himalayas feed a modest source
+    # penalty. Reed/UK-listed sources aren't automatically guaranteed either.
+    source_adjustment = -4 if source_himalayas else 0
+    overall = max(0, overall + source_adjustment)
+    if uk_group == "worldwide":
+        overall = min(overall, 74)
+    elif uk_group == "unverified":
+        overall = min(overall, 78)
     if cross_border:
-        overall = min(overall, 74)  # Possible opportunity, not automatically a strong match.
+        overall = min(overall, 70)
     if restricted:
         overall = min(overall, 20)
     if mandatory:
@@ -262,6 +287,16 @@ def profile(title: str, description: str = "", employment: str = "",
         evidence.append("Higher seniority than CV directly demonstrates")
     evidence.append(hours_fit)
     evidence.append(remote_status)
+    if geography_adjustment:
+        evidence.append(
+            f"Geography / UK employment uncertainty: {geography_adjustment} working-fit points; "
+            "UK payroll, contractor status and time-zone requirements need checking."
+        )
+    if source_adjustment:
+        evidence.append(
+            f"Himalayas source-priority adjustment: {source_adjustment} overall points. "
+            "The country filter includes worldwide jobs; it does not identify employer headquarters."
+        )
     if cross_border:
         evidence.append("Worldwide independent-contractor opportunity: verify UK contracting, invoicing, tax, currency and time zone; employee benefits are not assumed.")
     if restricted:
@@ -283,7 +318,10 @@ def profile(title: str, description: str = "", employment: str = "",
         "support_signals": support,
         "engagement_route": route,
         "uk_eligibility": uk_status,
+        "uk_group": uk_group,
+        "geography_adjustment": geography_adjustment,
+        "source_adjustment": source_adjustment,
         "cross_border_review": cross_border,
         "uk_restricted": restricted,
-        "score_basis": "Rules-based estimate using CV evidence and listing text; not an employer or verified remote assessment.",
+        "score_basis": "Rules-based estimate using CV and job text; UK-listing scope and source-priority adjustments affect ranking, not verified hiring eligibility.",
     }
