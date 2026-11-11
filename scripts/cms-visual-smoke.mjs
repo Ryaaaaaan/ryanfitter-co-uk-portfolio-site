@@ -282,7 +282,7 @@ try{
   assert.equal(await page.getByText('Build your website.').count(),0,
     'Overview must not show the old website milestone');
   await page.goto('http://127.0.0.1:5173/admin/tasks',{waitUntil:'networkidle'});
-  await page.getByRole('heading',{name:'Work board',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Work board',exact:true,level:2}).waitFor();
   await page.getByRole('button',{name:'+ Add task'}).click();
   await page.getByLabel('Task title').fill('Update LoftyCards listings');
   await Promise.all([
