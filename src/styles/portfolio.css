@@ -347,3 +347,120 @@
 .cms-section .portfolio-button-outline:hover{filter:brightness(.97)}
 html{scroll-behavior:smooth}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+
+/* Switchable homepage portfolio: the existing three-card layout remains the
+   default for all saved CMS documents. List is an opt-in section preference. */
+.cms-section-projects.cms-projects-list .portfolio-projects{
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:var(--cms-layout-gap,16px);
+}
+.cms-section-projects.cms-projects-list .portfolio-project{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(185px,.42fr);
+  column-gap:clamp(20px,4vw,55px);
+  row-gap:9px;
+  min-height:0;
+  padding:27px 31px;
+}
+.cms-section-projects.cms-projects-list .portfolio-project-top{
+  grid-column:1/-1;
+  grid-row:1;
+  min-height:0;
+  margin-bottom:7px;
+}
+.cms-section-projects.cms-projects-list .portfolio-project-title{
+  grid-column:1;
+  grid-row:2;
+  margin:0;
+}
+.cms-section-projects.cms-projects-list .portfolio-project>p{
+  grid-column:1;
+  grid-row:3;
+  margin:0;
+}
+.cms-section-projects.cms-projects-list .cms-project-image{
+  grid-column:1;
+  grid-row:4;
+  max-width:340px;
+  height:160px;
+  object-fit:contain;
+  margin:8px 0 0;
+}
+.cms-section-projects.cms-projects-list .portfolio-project-end{
+  grid-column:2;
+  grid-row:2/5;
+  align-self:stretch;
+  flex-direction:column;
+  justify-content:center;
+  align-items:flex-start;
+  gap:18px;
+  border-top:0;
+  border-left:1px solid var(--pf-line);
+  margin:0;
+  padding:8px 0 8px 28px;
+}
+.cms-section-projects.cms-projects-list .portfolio-project-title h3{
+  font-size:clamp(1.6rem,2.4vw,2.5rem);
+}
+.cms-projects-empty{
+  padding:20px;
+  border:1px dashed var(--pf-line);
+  color:var(--pf-muted);
+}
+@media(max-width:900px){
+  .cms-section-projects.cms-projects-list .portfolio-project{
+    grid-template-columns:minmax(0,1fr);
+    row-gap:12px;
+    padding:24px;
+  }
+  .cms-section-projects.cms-projects-list .portfolio-project-top,
+  .cms-section-projects.cms-projects-list .portfolio-project-title,
+  .cms-section-projects.cms-projects-list .portfolio-project>p,
+  .cms-section-projects.cms-projects-list .portfolio-project-end,
+  .cms-section-projects.cms-projects-list .cms-project-image{
+    grid-column:1;
+    grid-row:auto;
+  }
+  .cms-section-projects.cms-projects-list .portfolio-project-end{
+    flex-direction:row;
+    align-items:end;
+    justify-content:space-between;
+    border-left:0;
+    border-top:1px solid var(--pf-line);
+    padding:18px 0 0;
+    gap:14px;
+  }
+}
+/* The CMS simulates narrow viewports inside the resizable centre stage even
+   when the browser itself is wide. */
+.visual-page-frame.tablet .cms-section-projects.cms-projects-list .portfolio-project,
+.visual-page-frame.mobile .cms-section-projects.cms-projects-list .portfolio-project{
+  grid-template-columns:minmax(0,1fr);
+  row-gap:12px;
+  padding:20px;
+}
+.visual-page-frame.tablet .cms-section-projects.cms-projects-list .portfolio-project :is(
+  .portfolio-project-top,.portfolio-project-title,.cms-project-image,.portfolio-project-end
+),
+.visual-page-frame.mobile .cms-section-projects.cms-projects-list .portfolio-project :is(
+  .portfolio-project-top,.portfolio-project-title,.cms-project-image,.portfolio-project-end
+){
+  grid-column:1;
+  grid-row:auto;
+}
+.visual-page-frame.tablet .cms-section-projects.cms-projects-list .portfolio-project>p,
+.visual-page-frame.mobile .cms-section-projects.cms-projects-list .portfolio-project>p{
+  grid-column:1;
+  grid-row:auto;
+}
+.visual-page-frame.tablet .cms-section-projects.cms-projects-list .portfolio-project-end,
+.visual-page-frame.mobile .cms-section-projects.cms-projects-list .portfolio-project-end{
+  border-left:0;
+  border-top:1px solid var(--pf-line);
+  flex-direction:row;
+  align-items:end;
+  justify-content:space-between;
+  padding:18px 0 0;
+}
