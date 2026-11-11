@@ -5,13 +5,41 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from backend.tests import test_app as auth_tests
-from backend.cms import ContentStore, DEFAULT, STARTER, validate
+from backend.cms import ContentStore, DEFAULT, STARTER, EXTRA_SECTIONS, IMAGE_SECTION, validate
 
 
 class ContentValidationTest(unittest.TestCase):
     def test_both_starters_validate(self):
         validate(DEFAULT)
         validate(STARTER)
+
+    def test_visual_builder_block_types_validate_and_persist(self):
+        site = copy.deepcopy(STARTER)
+        for index, template in enumerate([IMAGE_SECTION, *EXTRA_SECTIONS]):
+            block = copy.deepcopy(template)
+            block['id'] = 'visual-block-' + str(index)
+            site['sections'].append(block)
+        validate(site)
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContentStore(directory + '/cms.sqlite3')
+            result = store.save(site, 0)
+            self.assertEqual(result['draft']['sections'][-1]['type'], 'divider')
+            self.assertEqual(store.publish(1)['published'], site)
+
+    def test_visual_media_url_validation_applies_to_nested_gallery_images(self):
+        site = copy.deepcopy(DEFAULT)
+        gallery = copy.deepcopy(next(s for s in EXTRA_SECTIONS if s['type']=='gallery'))
+        site['sections'].append(gallery)
+        gallery['items'][0]['image'] = 'javascript:alert(1)'
+        with self.assertRaises(ValueError):
+            validate(site)
+        gallery['items'][0]['image'] = '/content/media/' + 'a'*32 + '.png'
+        validate(site)
+        layout = copy.deepcopy(next(s for s in EXTRA_SECTIONS if s['type']=='image_text'))
+        layout['imageSide']='javascript:alert(1)'
+        site['sections'].append(layout)
+        with self.assertRaises(ValueError):
+            validate(site)
 
     def test_rejects_unsafe_links_styles_and_duplicate_ids(self):
         for mutate in (
