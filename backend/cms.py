@@ -1,6 +1,7 @@
 """Validated CMS documents and transactional local SQLite storage."""
 import copy
 import json
+import math
 import re
 import sqlite3
 from pathlib import Path
@@ -15,6 +16,43 @@ PROJECT = copy.deepcopy(STARTER['projects'][0])
 PROJECT['note'] = ''
 ARRAY_TEMPLATES = {'links': {'label': '', 'href': '/'}, 'buttons': {'label': '', 'href': '/'},
                    'projects': PROJECT, 'sections': DEFAULT['sections'][0]}
+
+# Optional section overrides are backwards-compatible with existing saved drafts.
+# Validate them separately from template-required fields so existing content loads
+# unchanged and arbitrary CSS / unknown objects can never be persisted.
+STYLE_OVERRIDES = {
+    'lineHeight': (0, 3), 'letterSpacing': (-8, 12),
+    'paragraphSpacing': (-1, 90), 'bodyWeight': (0, 900),
+    'headingSize': (0, 160), 'headingLineHeight': (0, 3),
+    'headingLetterSpacing': (-12, 12), 'headingWeight': (0, 900),
+    'statValueSize': (0, 110), 'statLabelSize': (0, 50),
+}
+LAYOUT_OVERRIDES = {
+    'columns': (0, 12), 'gap': (-1, 160),
+    'split': (20, 80), 'copyMaxWidth': (0, 1200),
+}
+LAYOUT_ALIGNS = {'start', 'center', 'end'}
+
+
+def check_section_overrides(section):
+    def bounded(value, name, limits):
+        if type(value) not in (int, float) or not math.isfinite(value) or not limits[0] <= value <= limits[1]:
+            raise ValueError(f'Invalid {name}; expected {limits[0]}–{limits[1]}')
+    layout = section.get('layout')
+    if layout is not None:
+        if not isinstance(layout, dict) or set(layout) - set(LAYOUT_OVERRIDES) - {'verticalAlign'}:
+            raise ValueError('Unknown section layout fields')
+        for field, value in layout.items():
+            if field == 'verticalAlign':
+                if value not in LAYOUT_ALIGNS:
+                    raise ValueError('Unknown vertical alignment')
+            else:
+                bounded(value, field, LAYOUT_OVERRIDES[field])
+                if field in ('columns', 'gap', 'split', 'copyMaxWidth') and type(value) is not int:
+                    raise ValueError(f'{field} must be an integer')
+    for field, value in section['style'].items():
+        if field in STYLE_OVERRIDES:
+            bounded(value, field, STYLE_OVERRIDES[field])
 
 
 def validate(document):
@@ -54,8 +92,13 @@ def validate(document):
             if not isinstance(value, dict):
                 raise ValueError(f'{key or "site"} must be an object')
             extras = set(value) - set(template)
+            if key == 'style':
+                extras.difference_update(STYLE_OVERRIDES)
             if key in ('sections', 'projects'):
                 extras.discard('image')
+                if key == 'sections':
+                    extras.discard('layout')
+                    check_section_overrides(value)
                 if 'image' in value:
                     media = value['image']
                     if not isinstance(media, str) or (media and not re.fullmatch(r'/content/media/[a-f0-9]{32}\.(png|jpg|webp)', media)):
