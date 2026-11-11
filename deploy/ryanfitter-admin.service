@@ -9,6 +9,8 @@ User=ryanfitter-admin
 Group=ryanfitter-admin
 WorkingDirectory=/opt/ryanfitter-portfolio
 EnvironmentFile=/etc/ryanfitter-admin.env
+# Optional Reed and Adzuna credentials, provisioned outside this repository.
+EnvironmentFile=-/etc/ryanfitter-job-feeds.env
 ExecStart=/opt/ryanfitter-portfolio/.venv/bin/gunicorn --bind 127.0.0.1:8787 --workers 2 --timeout 30 backend.app:app
 Restart=on-failure
 RestartSec=3
