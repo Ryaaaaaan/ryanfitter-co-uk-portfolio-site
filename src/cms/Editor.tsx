@@ -145,7 +145,9 @@ function Field({
    </label>;
    const isHeading=['heading','emphasis','client','title'].includes(name);
    const multiline=isHeading||['body','description','summary','challenge','result','note','text','caption'].includes(name)||value.length>125;
-   return <label className="visual-field">{pretty(name)}
+   const displayLabel=name==='eyebrow'?'Headline (small)':
+     name==='heading'?'Heading (large)':pretty(name);
+   return <label className="visual-field">{displayLabel}
     {multiline?<textarea rows={isHeading?3:4} aria-label={pretty(name)} value={value} onChange={e=>onChange(e.target.value)}/>:
     <input value={value} onChange={e=>onChange(e.target.value)}/>}
     {isHeading&&<small>Press Enter to control where the heading breaks onto a new line.</small>}
@@ -775,15 +777,16 @@ export function CmsEditor({csrf}:{csrf:string}){
             <label className="visual-check"><input type="checkbox" checked={project.cardVisible!==false}
               onChange={e=>updateProject({...project,cardVisible:e.target.checked})}/>
               Show this card on the homepage</label>
-            <label className="visual-field">Project name
-              <input aria-label="Card project name" value={project.client}
-                onChange={e=>updateProject({...project,client:e.target.value})}/></label>
-            <label className="visual-field">Category / role
+            <label className="visual-field">Headline / category (small)
               <input aria-label="Card category" value={project.descriptor}
                 onChange={e=>updateProject({...project,descriptor:e.target.value})}/></label>
             <label className="visual-field">Dates
               <input aria-label="Card dates" value={project.date}
                 onChange={e=>updateProject({...project,date:e.target.value})}/></label>
+            <label className="visual-field">Project heading (large)
+              <textarea aria-label="Card project name" rows={2} value={project.client}
+                onChange={e=>updateProject({...project,client:e.target.value})}/>
+              <small>Press Enter for a new heading line.</small></label>
             <label className="visual-field">Card description
               <textarea aria-label="Card description" rows={3}
                 value={project.cardSummary??project.title}
