@@ -6,6 +6,7 @@ working pattern is verified solely because a job board classifies it 'remote'.
 from __future__ import annotations
 
 import hashlib
+import os
 import html
 import json
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from backend.job_profile import profile as career_profile, PROFILE_VERSION
 
 SEARCH_TERMS = ("ecommerce", "digital marketing", "shopify", "seo", "merchandising", "email marketing", "product data", "crm")
 ROLE_WORDS = ("ecommerce", "e-commerce", "digital marketing", "merchandis", "online trading",
@@ -143,9 +145,13 @@ def normalize(job):
     employment = plain(job.get("employment_type", ""))[:120]
     hours = plain(job.get("hours", ""))[:120]
     confidence = job.get("confidence", "review")
-    s = score_match(title, description, employment, hours, confidence)
-    if s is None:
+    profile_data = career_profile(
+        title, description, employment, hours, str(job.get("location", "")),
+        str(job.get("warning", "")), str(job.get("source", "")),
+    )
+    if not profile_data:
         return None
+    s = profile_data["score"]
     h, _, _ = hours_in(hours + " " + description[:1600])
     return {
         "key": key_for(company, title), "company": company, "title": title,
@@ -156,11 +162,30 @@ def normalize(job):
         "warning": plain(job.get("warning", ""))[:500] or "Confirm UK eligibility, hours and remote arrangements directly.",
         "confidence": confidence, "posted": str(job.get("posted", ""))[:10],
         "salary": plain(job.get("salary", ""))[:120],
+        # Keep only a short public job-spec excerpt. Never copy the user's CV.
+        "description": description[:1800],
+        **profile_data,
     }
 
 
+def enrich(row):
+    # Legacy matches were saved with only one combined heuristic score. Re-score
+    # without silently overwriting human save/dismiss choices or inventing spec.
+    result = dict(row)
+    if result.get("profile_version") != PROFILE_VERSION:
+        candidate = career_profile(
+            result.get("title", ""), result.get("description", "") or
+            result.get("reason", ""), result.get("employment_type", ""),
+            result.get("hours", ""), result.get("location", ""),
+            result.get("warning", ""), result.get("source", ""),
+        )
+        if candidate:
+            result.update(candidate)
+    return result
+
+
 def seed_rows():
-    return [{**item, "key": key_for(item["company"], item["title"])} for item in SEED]
+    return [enrich({**item, "key": key_for(item["company"], item["title"])}) for item in SEED]
 
 
 class MatchStore:
@@ -180,6 +205,14 @@ class MatchStore:
           finished TEXT, status TEXT NOT NULL, added INTEGER NOT NULL DEFAULT 0,
           reviewed INTEGER NOT NULL DEFAULT 0, details TEXT NOT NULL DEFAULT ''
         )""")
+        columns = {c["name"] for c in db.execute("PRAGMA table_info(job_scans)")}
+        for name, definition in (
+            ("existing", "INTEGER NOT NULL DEFAULT 0"),
+            ("saved_seen", "INTEGER NOT NULL DEFAULT 0"),
+            ("sources_json", "TEXT NOT NULL DEFAULT '[]'"),
+        ):
+            if name not in columns:
+                db.execute(f"ALTER TABLE job_scans ADD COLUMN {name} {definition}")
         stamp = now()
         for item in seed_rows():
             db.execute(
@@ -198,16 +231,27 @@ class MatchStore:
                 (limit,),
             ).fetchall()
             latest = db.execute("SELECT * FROM job_scans ORDER BY id DESC LIMIT 1").fetchone()
+            history = db.execute("SELECT * FROM job_scans ORDER BY id DESC LIMIT 12").fetchall()
+            def scan_record(r):
+                d = dict(r)
+                try:
+                    d["sources"] = json.loads(d.pop("sources_json") or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    d["sources"] = []
+                return d
             return {
-                "matches": [{**json.loads(r["data"]), "state": r["state"],
+                "matches": [{**enrich(json.loads(r["data"])), "state": r["state"],
                              "first_seen": r["first_seen"], "last_seen": r["last_seen"]} for r in rows],
-                "scan": dict(latest) if latest else None,
+                "scan": scan_record(latest) if latest else None,
+                "history": [scan_record(r) for r in history],
+                "total_saved": db.execute("SELECT count(*) FROM job_matches WHERE state='saved'").fetchone()[0],
+                "total_dismissed": db.execute("SELECT count(*) FROM job_matches WHERE state='dismissed'").fetchone()[0],
             }
 
     def get(self, key):
         with self.connect() as db:
             row = db.execute("SELECT * FROM job_matches WHERE key=?", (key,)).fetchone()
-            return ({**json.loads(row["data"]), "state": row["state"]} if row else None)
+            return ({**enrich(json.loads(row["data"])), "state": row["state"]} if row else None)
 
     def state(self, key, state):
         if state not in ("dismissed", "saved", "new"):
@@ -233,8 +277,10 @@ class MatchStore:
             db.commit()
             return cur.lastrowid
 
-    def finish(self, run_id, candidates, errors, sources_ok):
+    def finish(self, run_id, candidates, errors, sources_ok, source_details=None):
         added = 0
+        existing = 0
+        saved_seen = 0
         stamp = now()
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -248,15 +294,22 @@ class MatchStore:
                     added += 1
                 else:
                     # Leave the human's saved/dismissed decision untouched.
+                    existing += 1
+                    if db.execute("SELECT state FROM job_matches WHERE key=?", (item["key"],)).fetchone()["state"] == "saved":
+                        saved_seen += 1
                     db.execute("UPDATE job_matches SET data=?,last_seen=? WHERE key=?",
                                (json.dumps(item), stamp, item["key"]))
             status = ("failed" if not sources_ok else "partial" if errors else "success")
             db.execute(
-                "UPDATE job_scans SET finished=?,status=?,added=?,reviewed=?,details=? WHERE id=?",
-                (stamp, status, added, len(candidates), "; ".join(errors)[:1000], run_id),
+                "UPDATE job_scans SET finished=?,status=?,added=?,reviewed=?,details=?,"
+                "existing=?,saved_seen=?,sources_json=? WHERE id=?",
+                (stamp, status, added, len(candidates), "; ".join(errors)[:1000],
+                 existing, saved_seen, json.dumps(source_details or []), run_id),
             )
             db.commit()
-        return {"status": status, "added": added, "reviewed": len(candidates), "errors": errors}
+        return {"status": status, "added": added, "reviewed": len(candidates),
+                "existing": existing, "saved_seen": saved_seen,
+                "sources": source_details or [], "errors": errors}
 
 
 def himalayas_jobs():
