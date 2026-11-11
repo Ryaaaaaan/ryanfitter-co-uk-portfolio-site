@@ -451,6 +451,7 @@ export function CmsEditor({csrf}:{csrf:string}){
          <a href="/admin/jobs">Applications</a>
          <a href="/admin/interviews">Interview calendar</a>
          <a href="/admin/cvs">My CVs</a>
+         <a href="/admin/tasks">Work board</a>
          <a href="/admin/cms" aria-current="page">Portfolio CMS</a>
        </nav>
      </details>
