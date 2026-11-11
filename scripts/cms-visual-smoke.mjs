@@ -82,7 +82,12 @@ try{
   assert((await page.locator('.portfolio-hero h1').innerText()).includes('A properly live preview'));
 
   // Save, reload and publish-style rehydration must not bring back a starter prompt.
-  await page.getByRole('button',{name:'Save draft'}).click();
+  await Promise.all([
+    page.waitForResponse(response=>response.url().endsWith('/admin/api/cms')
+      && response.request().method()==='PUT'),
+    page.getByRole('button',{name:'Save draft'}).click()
+  ]);
+  await page.getByText('Draft saved. The public website is unchanged.').waitFor();
   assert.equal(saves,1,'Draft should reach the backend mock');
   await page.reload({waitUntil:'networkidle'});
   await page.locator('.visual-page-frame').waitFor();
