@@ -1,0 +1,70 @@
+name: Scan remote ecommerce jobs
+
+on:
+  # GitHub cron is UTC. Run both possible clock hours, then retain only 08 UK.
+  schedule:
+    - cron: '0 7,8 * * 1,3,5'
+  # Refresh immediately after a successful website deployment, including first rollout.
+  workflow_run:
+    workflows: ["Deploy personal website to AWS"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ryanfitter-job-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-west-2
+      INSTANCE_ID: i-0266a151d81b9a47a
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check scheduled UK time (handles BST and GMT)
+        id: clock
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          import os
+          london = datetime.now(ZoneInfo('Europe/London'))
+          scheduled = os.environ['EVENT_NAME'] == 'schedule'
+          run = (not scheduled) or (london.weekday() in (0,2,4) and london.hour == 8)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('run=' + str(run).lower() + '\n')
+          print('Local time:', london.isoformat(), 'Execute scan:', run)
+          PY
+      - name: Obtain scoped AWS credentials
+        if: steps.clock.outputs.run == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::746364933861:role/RyanFitterPortfolioGitHubDeploy
+          aws-region: eu-west-2
+          retry-max-attempts: 3
+          role-session-name: jobs-scan-${{ github.run_id }}
+          role-duration-seconds: 900
+      - name: Execute private scanner via Systems Manager
+        if: steps.clock.outputs.run == 'true'
+        run: python deploy/trigger-job-scan.py

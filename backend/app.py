@@ -14,8 +14,10 @@ import os
 import secrets
 import time
 from datetime import timedelta
+from threading import Thread
 from backend.cms import ContentStore
 from backend.jobs import JobStore
+from backend.job_matches import MatchStore, scan as scan_matches
 from backend.uploads import ImageLibrary, published_image_urls
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
@@ -67,6 +69,7 @@ def create_app() -> Flask:
 
     store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    matches = MatchStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
 
     app.secret_key = secret
@@ -241,6 +244,69 @@ def create_app() -> Flask:
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
+    @app.get("/admin/api/job-matches")
+    def list_job_matches():
+        if not signed_in():
+            abort(401)
+        return jsonify(matches.list())
+
+    @app.post("/admin/api/job-scans")
+    def start_job_scan():
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403)
+        try:
+            run_id = matches.begin()
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
+        def worker():
+            try:
+                scan_matches(matches, run_id=run_id)
+            except Exception:
+                LOG.exception("Private job scan crashed")
+                # The database lock is released; a stale run is failed on next scan.
+        Thread(target=worker, daemon=True, name="ryanfitter-job-scan").start()
+        return jsonify({"status": "running", "run_id": run_id}), 202
+
+    @app.post("/admin/api/job-matches/<match_key>/action")
+    def act_on_match(match_key):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403)
+        if len(match_key) != 32 or any(c not in "0123456789abcdef" for c in match_key):
+            abort(404)
+        payload = request.get_json(silent=True)
+        action = payload.get("action") if isinstance(payload, dict) else None
+        if action not in ("save", "dismiss", "restore"):
+            return jsonify({"error": "Unknown match action"}), 400
+        match = matches.get(match_key)
+        if match is None:
+            abort(404)
+        try:
+            if action == "save":
+                job = {
+                    "company": match["company"], "title": match["title"],
+                    "url": match["apply_url"], "location": match["location"],
+                    "salary": match["salary"], "source": match["source"],
+                    "status": "saved", "workplace": "unknown",
+                    "notes": (match["reason"] + "\\n\\n" + match["warning"] + "\\nHours: " + match["hours"])[:10000],
+                }
+                try:
+                    created = jobs.create(job)
+                except RuntimeError as error:
+                    if "already in the tracker" not in str(error):
+                        raise
+                    created = None
+                matches.state(match_key, "saved")
+                return jsonify({"success": True, "job": created})
+            matches.state(match_key, "dismissed" if action == "dismiss" else "new")
+            return jsonify({"success": True})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
     @app.route("/admin/api/jobs", methods=["GET", "POST"])
     def jobs_collection():
         if not signed_in():
@@ -322,6 +388,7 @@ def create_app() -> Flask:
     @app.get("/admin/")
     @app.get("/admin/cms")
     @app.get("/admin/jobs")
+    @app.get("/admin/job-matches")
     def dashboard():
         if not signed_in():
             return redirect("/admin/login", 302)

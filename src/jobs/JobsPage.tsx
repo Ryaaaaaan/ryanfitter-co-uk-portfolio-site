@@ -164,6 +164,6 @@ export function JobsPage({csrf}:{csrf:string}){
         {job.url&&<a href={job.url} target="_blank" rel="noreferrer noopener">Vacancy ↗</a>}
       </div>
     </article>)}</div>}
-    <p className="jobs-hint">Job matches from the scheduled ChatGPT search are not imported automatically yet. Add vacancies manually here while we build a secure feed.</p>
+    <p className="jobs-hint">New recommended vacancies appear in <a href="/admin/job-matches">Job matches</a>. Save a match there to copy it into this application tracker.</p>
   </div>;
 }

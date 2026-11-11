@@ -1,0 +1,44 @@
+.matches-screen{padding:10px 0 40px;color:#182720}
+.matches-screen *{box-sizing:border-box}
+.matches-head{display:flex;justify-content:space-between;align-items:center;gap:24px}
+.matches-head h2{font-size:26px;letter-spacing:-.05em;margin:0 0 6px}
+.matches-head p{font-size:14px;color:#62736a;margin:0;max-width:650px}
+.matches-screen button,.matches-screen select,.matches-screen input{font:inherit}
+.matches-screen button{border:1px solid #bed0c2;background:#fff;color:#234d37;padding:10px 13px;border-radius:6px;cursor:pointer;font-weight:700}
+.matches-screen button:disabled{opacity:.5;cursor:default}
+.matches-screen .matches-primary{background:#26674c;border-color:#26674c;color:white}
+.matches-screen .matches-primary:hover:not(:disabled){background:#1a4e39}
+.matches-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:24px 0}
+.matches-summary>div{border:1px solid #dce6df;border-radius:9px;padding:22px;background:#fff;display:grid;gap:12px;min-width:0}
+.matches-summary small{font-size:10px;color:#6a7e6e;font-weight:800;letter-spacing:.08em}
+.matches-summary strong{font-size:32px;letter-spacing:-.06em;line-height:1.1}
+.matches-summary strong.matches-scan-time{font-size:18px;letter-spacing:-.025em}
+.matches-status{background:#edf4ef;border:1px solid #c9dfce;border-radius:8px;padding:18px;color:#395b45;display:grid;gap:8px;font-size:13px}
+.matches-status p{color:#5f7365;margin:5px 0 0}
+.matches-status a{color:#174e37}
+.matches-scan-error{color:#994a1d;font-weight:700}
+.matches-filters{display:flex;justify-content:space-between;gap:14px;align-items:end;flex-wrap:wrap;margin:23px 0 15px}
+.matches-tabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-right:auto}
+.matches-tabs button[aria-pressed=true]{background:#244c39;color:#fff;border-color:#244c39}
+.matches-filters label{font-size:11px;color:#62736a;font-weight:800;display:grid;gap:6px}
+.matches-filters select,.matches-filters input{background:white;border:1px solid #c5d3c8;border-radius:5px;padding:10px;color:#203528;max-width:250px}
+.matches-list{display:grid;gap:13px}
+.matches-card{background:#fff;border:1px solid #dee6df;border-radius:10px;padding:22px;display:flex;gap:28px;justify-content:space-between}
+.matches-card-details{min-width:0;flex:1}
+.matches-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:13px}
+.matches-tags span{border-radius:18px;border:1px solid #dde5dd;background:#fafcf9;padding:4px 8px;color:#62736a;font-size:11px}
+.matches-tags .matches-score{background:#e8f1ea;color:#256448;font-weight:850}
+.matches-company{text-transform:uppercase;letter-spacing:.08em;color:#40684d;font-weight:800;font-size:11px}
+.matches-card h3{font-size:22px;line-height:1.2;letter-spacing:-.04em;margin:7px 0 11px}
+.matches-reason{color:#4f6757;line-height:1.55;margin:0 0 13px}
+.matches-warning{padding:10px 12px;background:#fff7ed;border-left:3px solid #d59539;color:#77511d;font-size:12px;line-height:1.5}
+.matches-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px;color:#78887a;font-size:11px}
+.matches-meta span:not(:last-child):after{content:' ·'}
+.matches-card-actions{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:180px;flex-shrink:0}
+.matches-card-actions a{border:1px solid #cbd9cb;border-radius:6px;padding:10px 12px;text-align:center;text-decoration:none;font-size:12px;color:#275c40;font-weight:800}
+.matches-card-actions a:hover{background:#edf4ef}
+.matches-saved{font-weight:800;color:#26674c;padding:10px 0;text-align:center}
+.matches-footer{font-size:12px;color:#6b7c6e;line-height:1.5;margin-top:24px}
+.matches-screen :focus-visible{outline:3px solid #26674c;outline-offset:2px}
+@media(max-width:1050px){.matches-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:690px){.matches-head,.matches-card{flex-direction:column;align-items:stretch}.matches-card-actions{width:auto}.matches-summary{gap:8px}.matches-summary>div{padding:16px}.matches-card{padding:16px}.matches-filters label{flex:1 1 150px}.matches-filters select,.matches-filters input{max-width:none;width:100%}}
