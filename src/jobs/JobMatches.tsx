@@ -8,6 +8,7 @@ type Match={
  first_seen:string;last_seen:string;role_tags?:string[];seniority?:string;
  cv_score?:number;lifestyle_score?:number;fit_evidence?:string[];
  remote_status?:string;hours_fit?:string;support_signals?:string[];score_basis?:string;
+ engagement_route?:string;uk_eligibility?:string;cross_border_review?:boolean;uk_restricted?:boolean;
 };
 type SourceHealth={name:string;status:string;matched:number;detail?:string};
 type Scan={
@@ -40,6 +41,11 @@ export function JobMatches({csrf}:{csrf:string}){
  const [hours,setHours]=useState<'all'|'good'|'other'>('all');
  const [role,setRole]=useState('all'),[seniority,setSeniority]=useState('all');
  const [sort,setSort]=useState<Sort>('overall');
+ const [source,setSource]=useState('all');
+ const [engagement,setEngagement]=useState('all');
+ const [ukReview,setUkReview]=useState('all');
+ const [pay,setPay]=useState('all');
+ const [minCV,setMinCV]=useState('0');
  const [healthOpen,setHealthOpen]=useState(false);
  async function load(silent=false){
    if(!silent)setLoading(true);
@@ -59,11 +65,23 @@ export function JobMatches({csrf}:{csrf:string}){
  },[result.scan?.id,result.scan?.status]);
  const roles=useMemo(()=>Array.from(new Set(result.matches.flatMap(m=>m.role_tags||[]))).sort(),[result.matches]);
  const seniorities=useMemo(()=>Array.from(new Set(result.matches.map(m=>m.seniority||'Not stated'))).sort(),[result.matches]);
+ const sources=useMemo(()=>Array.from(new Set(result.matches.map(m=>m.source||'Unknown'))).sort(),[result.matches]);
  const matches=useMemo(()=>{
    const filtered=result.matches.filter(m=>{
      if(tab!=='all'&&m.state!==tab)return false;
      if(role!=='all'&&!(m.role_tags||[]).includes(role))return false;
      if(seniority!=='all'&&(m.seniority||'Not stated')!==seniority)return false;
+     if(source!=='all'&&(m.source||'Unknown')!==source)return false;
+     if(engagement==='contractor'&&m.engagement_route!=='Independent contractor')return false;
+     if(engagement==='employment'&&m.engagement_route!=='Employment indicated')return false;
+     if(engagement==='other'&&['Independent contractor','Employment indicated'].includes(m.engagement_route||''))return false;
+     if(ukReview==='uk'&&!(m.uk_eligibility||'').startsWith('UK location stated'))return false;
+     if(ukReview==='worldwide'&&!m.cross_border_review)return false;
+     if(ukReview==='unclear'&&(m.uk_eligibility||'').startsWith('UK location stated'))return false;
+     if(ukReview==='restricted'&&!m.uk_restricted)return false;
+     if(pay==='stated'&&!m.salary)return false;
+     if(pay==='unstated'&&m.salary)return false;
+     if((m.cv_score||0)<Number(minCV))return false;
      const hoursText=(m.hours+' '+m.employment_type+' '+(m.hours_fit||'')).toLowerCase();
      const flexible=/part.time|freelance|10–|15–|20–|25–|30\s*hour|hours within 30|hours range crosses 30|contract/i.test(hoursText);
      if(hours==='good'&&!flexible)return false;
@@ -78,7 +96,7 @@ export function JobMatches({csrf}:{csrf:string}){
      const get=(m:Match)=>sort==='cv'?m.cv_score??0:sort==='lifestyle'?m.lifestyle_score??0:m.score||0;
      return get(b)-get(a)||b.first_seen.localeCompare(a.first_seen);
    });
- },[result.matches,tab,hours,role,seniority,sort,query]);
+ },[result.matches,tab,hours,role,seniority,sort,query,source,engagement,ukReview,pay,minCV]);
  async function action(key:string,name:'save'|'dismiss'){
    setBusy(key);setMessage('');setError('');
    try{
@@ -189,9 +207,33 @@ export function JobMatches({csrf}:{csrf:string}){
     <label>Hours<select value={hours} onChange={e=>setHours(e.target.value as typeof hours)}>
       <option value="all">Any hours</option><option value="good">Part-time / flexible</option><option value="other">Other / not stated</option>
     </select></label>
+    <label>Source<select value={source} onChange={e=>setSource(e.target.value)}>
+      <option value="all">All sources</option>{sources.map(s=><option key={s} value={s}>{s}</option>)}
+    </select></label>
+    <label>Work arrangement<select value={engagement} onChange={e=>setEngagement(e.target.value)}>
+      <option value="all">Employment & contracts</option><option value="employment">Employment indicated</option>
+      <option value="contractor">Contractor / freelance</option><option value="other">Type unconfirmed</option>
+    </select></label>
+    <label>UK eligibility<select value={ukReview} onChange={e=>setUkReview(e.target.value)}>
+      <option value="all">All locations</option><option value="uk">UK mentioned</option>
+      <option value="worldwide">Worldwide contractor — verify</option>
+      <option value="unclear">UK not explicitly listed</option><option value="restricted">Possible UK restriction</option>
+    </select></label>
+    <label>Salary<select value={pay} onChange={e=>setPay(e.target.value)}>
+      <option value="all">Any salary info</option><option value="stated">Pay disclosed</option>
+      <option value="unstated">Pay not disclosed</option>
+    </select></label>
+    <label>Min. CV score<select value={minCV} onChange={e=>setMinCV(e.target.value)}>
+      <option value="0">All CV scores</option><option value="60">60+</option>
+      <option value="75">75+</option><option value="85">85+</option>
+    </select></label>
     <label>Search<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Company, skill, title…"/></label>
+    <button type="button" className="matches-reset-filters" onClick={()=>{
+      setTab('new');setHours('all');setRole('all');setSeniority('all');setSort('overall');
+      setSource('all');setEngagement('all');setUkReview('all');setPay('all');setMinCV('0');setQuery('');
+    }}>Reset filters</button>
   </div>
-  <div className="matches-results-heading"><strong>{matches.length} opportunities</strong><span>Sort changes the order; filters reduce the list.</span></div>
+  <div className="matches-results-heading"><strong>{matches.length} opportunities</strong><span>Match scores are estimates. Review UK eligibility and contract terms separately.</span></div>
   {loading?<p className="jobs-empty">Loading matches…</p>:matches.length===0?<div className="jobs-empty">
     <h3>No matching vacancies</h3><p>Try another filter or run a fresh scan. The board will not invent jobs when sources return none.</p>
   </div>:<div className="matches-list">{matches.map(m=><article key={m.key} className="matches-card">
@@ -207,18 +249,27 @@ export function JobMatches({csrf}:{csrf:string}){
      <div className="matches-fit-details">
        <span><strong>Work pattern:</strong> {m.remote_status||'Unconfirmed'}</span>
        <span><strong>Hours:</strong> {m.hours_fit||'Not specified'}</span>
+       <span><strong>Arrangement:</strong> {m.engagement_route||'Not confirmed'}</span>
+       <span><strong>UK suitability:</strong> {m.uk_eligibility||'Confirm with employer'}</span>
        {(m.support_signals||[]).map(x=><span key={x} className="matches-support-signal">{x}</span>)}
      </div>
      <details className="matches-explanation"><summary>How was this match scored?</summary>
        <p>Based on your CV and the available job title/specification. It's a transparent, rules-based estimate, not an AI review or verification by the employer.</p>
        <ul>{(m.fit_evidence||[]).map((e,i)=><li key={i}>{e}</li>)}</ul>
      </details>
+     {m.cross_border_review&&<div className="matches-contract-review">
+       <strong>International contractor — review before applying</strong>
+       <p>Worldwide remote does not guarantee UK payroll, holiday/sick pay, convenient time zones or agreed payment terms. Confirm whether you would invoice as a UK contractor, how payment works and what hours are expected. This is a possible opportunity, not a verified UK employment match.</p>
+     </div>}
+     {m.uk_restricted&&<div className="matches-contract-review">
+       <strong>Location restriction may apply.</strong> Check the employer's eligibility requirements before applying.
+     </div>}
      <div className="matches-warning">Check before applying: {m.warning}</div>
      <div className="matches-meta">{m.salary&&<span>{m.salary}</span>}<span>{m.source}</span>{m.posted&&<span>Published {shortLabel(m.posted)}</span>}</div>
    </div>
    <div className="matches-card-actions">
      {m.state==='saved'?<span className="matches-saved">Already saved</span>:<button type="button" className="matches-primary" disabled={busy!==''} onClick={()=>void action(m.key,'save')}>{busy===m.key?'Saving…':'Save to applications'}</button>}
-     <a href={m.apply_url} target="_blank" rel="noopener noreferrer">View original vacancy ↗</a>
+     <a href={m.apply_url} target="_blank" rel="noopener noreferrer">Original listing ↗</a>
      {m.state==='new'&&<button type="button" disabled={busy!==''} onClick={()=>void action(m.key,'dismiss')}>Not relevant</button>}
    </div>
   </article>)}</div>}
