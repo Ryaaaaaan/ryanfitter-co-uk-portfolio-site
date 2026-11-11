@@ -76,6 +76,8 @@ CURL=(curl --resolve ryanfitter.co.uk:443:127.0.0.1 -sS)
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/cms)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/jobs)" == 302 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/jobs)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/job-matches)" == 302 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/job-matches)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/media)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/content/media/missing.png)" == 404 ]]
 "${CURL[@]}" --fail https://ryanfitter.co.uk/content/site.json | "$RUNTIME/.venv/bin/python" -c 'import json,sys; d=json.load(sys.stdin); assert d["version"]==1 and isinstance(d["sections"],list)'
