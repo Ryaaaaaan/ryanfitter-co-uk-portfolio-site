@@ -8,7 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent / 'src' / 'cms'
 DEFAULT = json.loads((ROOT / 'defaults.json').read_text())
 STARTER = json.loads((ROOT / 'starter.json').read_text())
-TEMPLATES = {s['type']: s for s in STARTER['sections'] + DEFAULT['sections']}
+IMAGE_SECTION = json.loads((ROOT / 'image.json').read_text())
+TEMPLATES = {s['type']: s for s in STARTER['sections'] + DEFAULT['sections'] + [IMAGE_SECTION]}
 PROJECT = copy.deepcopy(STARTER['projects'][0])
 PROJECT['note'] = ''
 ARRAY_TEMPLATES = {'links': {'label': '', 'href': '/'}, 'buttons': {'label': '', 'href': '/'},
