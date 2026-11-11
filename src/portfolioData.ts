@@ -73,32 +73,95 @@ export const projects: Project[] = [
     note: "This describes my work during my employment. The live website and its current implementation may have changed since then."
   },
   {
-    slug: "lbs-horticulture",
-    number: "03",
-    client: "LBS Horticulture",
-    descriptor: "B2B and B2C / Magento 2",
-    date: "2019 — 2021",
-    title: "Growing established B2B commerce while launching B2C.",
-    summary: "Worked across a business-to-business website and a new consumer-facing Magento 2 store, with a focus on content, SEO and usability.",
-    tools: ["Magento 2", "B2B e-commerce", "B2C launch", "On-page SEO", "Website UX"],
-    facts: [
-      { value: "£1.1m → £1.4m", label: "B2B annual revenue, 2019–20" },
-      { value: "£200k", label: "B2C revenue in first six months" },
-      { value: "4 people", label: "on the B2C launch team" }
+    "slug": "lbs-horticulture",
+    "number": "03",
+    "client": "LBS Horticulture",
+    "descriptor": "B2B and B2C / Magento 2",
+    "date": "2019 — 2021",
+    "title": "Helping launch LoveGardening while supporting established B2B ecommerce.",
+    "summary": "Supported the day-to-day running of an established B2B ecommerce operation and contributed to the launch of LoveGardening, a separate Magento 2 consumer storefront.",
+    "tools": [
+      "Magento 2",
+      "B2B ecommerce",
+      "B2C store launch",
+      "On-page SEO",
+      "Product merchandising",
+      "Website UX"
     ],
-    challenge: "Maintain and improve an established B2B online operation while helping a small team introduce a separate B2C shopping experience.",
-    work: [
-      "Oversaw day-to-day B2B e-commerce website activities, product content and merchandising.",
-      "Worked within a four-person team to launch a Magento 2 B2C store.",
-      "Improved onsite usability, website performance and organic search visibility.",
-      "Maintained product pages and content across the B2B and B2C channels."
+    "facts": [
+      {
+        "value": "Magento 2",
+        "label": "B2C storefront launched"
+      },
+      {
+        "value": "4-person",
+        "label": "B2C launch team"
+      },
+      {
+        "value": "B2B + B2C",
+        "label": "Ecommerce operations supported"
+      }
     ],
-    result: "The B2B channel recorded approximately £1.1m revenue in 2019 and £1.4m in 2020. The new B2C website generated £200,000 in its first six months. These are business and team outcomes, not solely my personal results.",
-    links: [
-      { label: "LBS Horticulture", href: "https://lbshorticulture.co.uk" },
-      { label: "LoveGardening", href: "https://lovegardening.com" }
+    "challenge": "Alongside ongoing B2B trading and catalogue work, the business wanted to bring its horticultural range to a consumer audience through a distinct ecommerce storefront.",
+    "work": [
+      "Managed day-to-day B2B ecommerce website operations, product content and online merchandising.",
+      "Worked as part of a four-person team on the LoveGardening Magento 2 B2C website launch.",
+      "Supported product-page content, onsite usability and customer journeys across the B2B and B2C websites.",
+      "Contributed to on-page SEO and website optimisation alongside routine trading activity."
     ],
-    note: "These sites are included as references to the businesses I worked on; their live content and designs may have changed since my involvement."
+    "result": "Helped deliver a new consumer-facing Magento 2 shopping experience while continuing to support the existing B2B operation. The launch was a collaborative team effort; the project is presented through the responsibilities I held rather than confidential company revenue figures.",
+    "links": [
+      {
+        "label": "LBS Horticulture",
+        "href": "https://lbshorticulture.co.uk"
+      },
+      {
+        "label": "LoveGardening",
+        "href": "https://lovegardening.com"
+      }
+    ],
+    "note": "This describes work undertaken during my employment, not the current implementation of these websites."
+  },
+  {
+    "slug": "style-cafe",
+    "number": "04",
+    "client": "Style Cafe",
+    "descriptor": "Digital marketing / Shopify",
+    "date": "2022 — 2023",
+    "title": "Improving paid media efficiency and ecommerce conversion.",
+    "summary": "Managed digital marketing and ecommerce activity across two Shopify stores, combining Google Ads optimisation with improvements to the onsite shopping experience.",
+    "tools": [
+      "Shopify",
+      "Google Ads",
+      "Paid acquisition",
+      "Conversion optimisation",
+      "Website UX",
+      "Digital marketing"
+    ],
+    "facts": [
+      {
+        "value": "25%+",
+        "label": "reduction in Google Ads spend"
+      },
+      {
+        "value": "1.8%",
+        "label": "reported conversion-rate increase"
+      },
+      {
+        "value": "2%",
+        "label": "reported bounce-rate reduction"
+      }
+    ],
+    "challenge": "Improve the efficiency of paid traffic while making the storefront experience more effective for shoppers across two Shopify ecommerce sites.",
+    "work": [
+      "Managed ecommerce and digital marketing activities across two Shopify stores.",
+      "Optimised Google Ads expenditure, achieving a reduction of more than 25% while maintaining click-through rate.",
+      "Worked on user experience and conversion-rate optimisation, monitoring site performance and customer behaviour.",
+      "Supported brand development and B2C packaging initiatives alongside trading and marketing responsibilities."
+    ],
+    "result": "Reported a conversion-rate increase of 1.8% and a bounce-rate reduction of 2%, alongside more than 25% lower Google Ads expenditure with click-through rate maintained. The original reporting does not specify whether the conversion and bounce-rate changes were relative percentages or percentage points, so they are described as reported changes rather than percentage-point gains.",
+    "links": [],
+    "note": "Historical results from my employment, as summarised in my CV. Metrics are rounded and should not be interpreted as current company performance."
   }
 ];
 
