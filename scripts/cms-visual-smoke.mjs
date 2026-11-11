@@ -308,16 +308,16 @@ try{
   await page.getByRole('heading',{name:'Job matches',level:2}).waitFor();
   assert.equal(await page.getByText('International contractor — review before applying').count(),1);
   assert.equal(await page.locator('.matches-card').count(),2);
-  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+  assert.equal((await page.locator('.matches-card .matches-company').first().textContent())?.trim(),
     'UK Listed Demo','UK-first default must rank the UK-listed vacancy above worldwide jobs');
   await page.getByLabel('UK eligibility').selectOption('worldwide');
   assert.equal(await page.locator('.matches-card').count(),1,
     'Worldwide filter must work for all job types, not only contractors');
-  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+  assert.equal((await page.locator('.matches-card .matches-company').first().textContent())?.trim(),
     'Motu Novu Test');
   await page.getByLabel('UK eligibility').selectOption('uk');
   assert.equal(await page.locator('.matches-card').count(),1);
-  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+  assert.equal((await page.locator('.matches-card .matches-company').first().textContent())?.trim(),
     'UK Listed Demo');
   await page.getByLabel('UK eligibility').selectOption('all');
   await page.getByLabel('Work arrangement').selectOption('employment');
