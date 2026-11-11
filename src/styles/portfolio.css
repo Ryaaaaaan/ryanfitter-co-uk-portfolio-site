@@ -464,3 +464,29 @@ html{scroll-behavior:smooth}
   justify-content:space-between;
   padding:18px 0 0;
 }
+
+/* Hard line breaks entered in the CMS headings are respected on the public
+   website and in the identical draft preview. No HTML is interpreted. */
+.cms-site .cms-section :is(h1,h2,h3){
+  white-space:pre-line;
+  overflow-wrap:break-word;
+}
+/* Section colour palettes also control the descriptive text in the dark
+   contact block, which previously used a hardcoded pale colour. */
+.cms-section-contact .portfolio-contact-bottom p{
+  color:var(--cms-body-color,var(--pf-muted));
+}
+.cms-section-contact .portfolio-contact-email{
+  color:var(--cms-body-color,var(--pf-muted))!important;
+}
+.cms-section-contact .portfolio-kicker{
+  color:var(--cms-eyebrow-color,var(--pf-accent));
+}
+.cms-section-contact .portfolio-contact-inner h2 em{
+  color:var(--cms-emphasis-color,var(--pf-accent));
+}
+.cms-section .portfolio-project-top,
+.cms-section .portfolio-hero-index,
+.cms-section .portfolio-expertise-num{
+  color:var(--pf-muted);
+}
