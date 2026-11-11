@@ -220,7 +220,7 @@ def profile(title: str, description: str = "", employment: str = "",
     worldwide = _found(location.lower(), r"\b(worldwide|global|anywhere|all countries)\b")
     explicit_uk = _found(
         location.lower(),
-        r"\b(united kingdom|great britain|uk remote|uk.based|remote uk|uk.eligible|gb.listed|gb.eligible)\b"
+        r"\b(united kingdom|great britain|\buk\b|uk remote|uk.based|remote uk|uk.eligible|gb.listed|gb.eligible)\b"
     )
     restricted = _found(combined, r"\b(us only|usa only|united states only|us residents only|must be based in (?:the )?(?:usa|us|united states)|uk applicants not eligible)\b")
     if restricted:
@@ -232,6 +232,11 @@ def profile(title: str, description: str = "", employment: str = "",
     elif worldwide:
         uk_group = "worldwide"
         uk_status = "Worldwide remote — no UK-specific employment terms confirmed"
+    elif (source or "").strip().lower() in ("reed", "adzuna"):
+        # Both adapters use UK job-market feeds. The source signals likely
+        # relevance to UK applicants; employer headquarters/payroll are unknown.
+        uk_group = "uk_listed"
+        uk_status = "UK job-board listing — employer terms still unverified"
     else:
         uk_group = "unverified"
         uk_status = "UK eligibility not established from listing"
