@@ -317,7 +317,7 @@ def remotive_jobs():
         for row in response.json().get("jobs", []):
             location = str(row.get("candidate_required_location") or "")
             low = location.lower()
-            if not any(x in low for x in ("united kingdom", "great britain", "uk", "worldwide", "anywhere")):
+            if not re.search(r"\b(?:united kingdom|great britain|uk|worldwide|anywhere)\b", low):
                 continue
             published = str(row.get("publication_date") or "")[:10]
             if published:
