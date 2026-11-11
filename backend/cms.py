@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parent.parent / 'src' / 'cms'
 DEFAULT = json.loads((ROOT / 'defaults.json').read_text())
 STARTER = json.loads((ROOT / 'starter.json').read_text())
 IMAGE_SECTION = json.loads((ROOT / 'image.json').read_text())
-TEMPLATES = {s['type']: s for s in STARTER['sections'] + DEFAULT['sections'] + [IMAGE_SECTION]}
+EXTRA_SECTIONS = json.loads((ROOT / 'blocks.json').read_text())
+TEMPLATES = {s['type']: s for s in STARTER['sections'] + DEFAULT['sections'] + [IMAGE_SECTION] + EXTRA_SECTIONS}
 PROJECT = copy.deepcopy(STARTER['projects'][0])
 PROJECT['note'] = ''
 ARRAY_TEMPLATES = {'links': {'label': '', 'href': '/'}, 'buttons': {'label': '', 'href': '/'},
@@ -33,6 +34,8 @@ def validate(document):
             if type(value) not in (int, float) or not lo <= value <= hi: raise ValueError(f'{key} must be between {lo} and {hi}')
         elif isinstance(template, str):
             if not isinstance(value, str) or len(value) > 12000: raise ValueError(f'{key} must be text of at most 12000 characters')
+            if key == 'image' and value and not re.fullmatch(r'/content/media/[a-f0-9]{32}\.(png|jpg|webp)', value): raise ValueError('Images must use an uploaded CMS image URL')
+            if key == 'imageSide' and value not in ('left', 'right'): raise ValueError('Image side must be left or right')
             if key == 'href' and not re.match(r'^(https?://|mailto:|/(?!/)|#)', value, re.I): raise ValueError('Links must use https://, http://, mailto:, / or #')
             if key in ('id', 'slug') and not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,79}', value): raise ValueError(f'{key} must use lowercase letters, numbers and hyphens')
             if key in ('background', 'accent', 'muted', 'panel') or (key == 'text' and template.startswith('#')):
