@@ -1,8 +1,27 @@
 import '../styles/cms-blocks.css';
 import type {CSSProperties} from 'react';
-import type {Link,Section,SiteContent} from './model';
+import type {ButtonStyle,Link,Section,SiteContent} from './model';
 import {safeHref} from './model';
-export function Buttons({links=[]}:{links?:Link[]}){return <div className="portfolio-actions">{links.map((link,i)=><a key={i} href={safeHref(link.href)} className={'portfolio-button '+(i===0?'portfolio-button-primary':'portfolio-button-outline')}>{link.label} ↗</a>)}</div>;}
+export function Buttons({links=[],style:options}:{links?:Link[];style?:ButtonStyle}){
+  const align=options?.alignment==='left'?'flex-start':options?.alignment==='center'?'center':options?.alignment==='right'?'flex-end':undefined;
+  const css={
+    justifyContent:align,
+    '--cms-btn-radius':options?.radius!==undefined?options.radius+'px':undefined,
+    '--cms-btn-pad-x':options?.paddingX!==undefined?options.paddingX+'px':undefined,
+    '--cms-btn-pad-y':options?.paddingY!==undefined?options.paddingY+'px':undefined,
+    '--cms-btn-gap':options?.gap!==undefined?options.gap+'px':undefined,
+    '--cms-btn-primary-bg':options?.primaryBackground||undefined,
+    '--cms-btn-primary-text':options?.primaryText||undefined,
+    '--cms-btn-secondary-bg':options?.secondaryBackground||undefined,
+    '--cms-btn-secondary-text':options?.secondaryText||undefined,
+    '--cms-btn-border-color':options?.borderColor||undefined,
+  } as CSSProperties;
+  return <div className="portfolio-actions" style={css}>{links.map((link,i)=>
+    <a key={i} href={safeHref(link.href)}
+      className={'portfolio-button portfolio-button-'+(link.variant|| (i===0?'primary':'outline'))}>
+      {link.label} ↗
+    </a>)}</div>;
+}
 function Heading({section:s}:{section:Section}){return <div className="portfolio-section-heading"><div>{s.eyebrow&&<span className="portfolio-kicker">{s.eyebrow}</span>}<h2>{s.heading}</h2></div>{s.body&&<p>{s.body}</p>}</div>;}
 export function PortfolioSection({section:s,site}:{section:Section;site:SiteContent}){
   const typography=s.style;
@@ -16,6 +35,11 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
   const style={
     background:typography.background||undefined,color:typography.text||undefined,
     '--pf-ink':typography.text||undefined,'--pf-accent':typography.accent||undefined,
+    '--pf-muted':typography.mutedColor||undefined,
+    '--cms-heading-color':typography.headingColor||undefined,
+    '--cms-body-color':typography.bodyColor||typography.text||undefined,
+    '--cms-eyebrow-color':typography.eyebrowColor||undefined,
+    '--cms-emphasis-color':typography.emphasisColor||undefined,
     paddingTop:typography.padding,paddingBottom:typography.padding,
     fontSize:typography.fontSize,textAlign:typography.align,
     '--cms-grid-columns':columns,'--cms-tablet-columns':Math.min(2,columns),
@@ -36,6 +60,10 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
   } as CSSProperties;
   const classes=[
     'cms-section','cms-section-'+s.type,
+    typography.headingColor?'cms-override-heading-color':'',
+    (typography.bodyColor||typography.text)?'cms-override-body-color':'',
+    (typography.eyebrowColor||typography.accent)?'cms-override-eyebrow-color':'',
+    typography.emphasisColor?'cms-override-emphasis-color':'',
     aboutSingle?'cms-layout-single':'',
     customGrid?'cms-layout-custom-columns':'',
     typography.lineHeight?'cms-custom-body-line':'',
@@ -51,22 +79,22 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
   ].filter(Boolean).join(' ');
   let content;
   switch(s.type){
-    case 'hero':content=<div className="portfolio-container portfolio-hero"><div className="portfolio-hero-topline"><span className="portfolio-overline">{s.eyebrow}</span><span className="portfolio-hero-index">{s.index}</span></div><h1>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h1><div className="portfolio-hero-bottom"><div className="portfolio-hero-intro"><p>{s.body}</p><span>{s.caption}</span></div><Buttons links={s.buttons}/></div></div>;break;
+    case 'hero':content=<div className="portfolio-container portfolio-hero"><div className="portfolio-hero-topline"><span className="portfolio-overline">{s.eyebrow}</span><span className="portfolio-hero-index">{s.index}</span></div><h1>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h1><div className="portfolio-hero-bottom"><div className="portfolio-hero-intro"><p>{s.body}</p><span>{s.caption}</span></div><Buttons links={s.buttons} style={s.buttonStyle}/></div></div>;break;
     case 'image':content=<figure className="portfolio-container cms-screenshot-figure"><h2>{s.heading}</h2><p>{s.body}</p>{s.image?<img src={s.image} alt={s.heading||"Screenshot of website work"} loading="lazy"/>:<div className="cms-screenshot-placeholder">Upload a genuine screenshot in the CMS media library to fill this section.</div>}<figcaption>{s.caption}</figcaption></figure>;break;
     case 'image_text':content=<div className={'portfolio-container cms-image-text'+(s.imageSide==='left'?' cms-image-left':'')}>
-      <div className="cms-image-text-copy"><h2>{s.heading}</h2><p>{s.body}</p><Buttons links={s.buttons}/></div>
+      <div className="cms-image-text-copy"><h2>{s.heading}</h2><p>{s.body}</p><Buttons links={s.buttons} style={s.buttonStyle}/></div>
       <figure>{s.image?<img src={s.image} alt={s.caption||s.heading||'Portfolio screenshot'} loading="lazy"/>:<div className="cms-media-placeholder">Choose a real screenshot from your media library.</div>}{s.caption&&<figcaption>{s.caption}</figcaption>}</figure>
     </div>;break;
     case 'gallery':content=<div className="portfolio-container cms-gallery"><Heading section={s}/><div className="cms-gallery-grid">{(s.items||[]).map((item,i)=><figure key={i}>{item.image?<img src={item.image} alt={item.caption||'Portfolio screenshot'} loading="lazy"/>:<div className="cms-media-placeholder">Select screenshot {i+1}</div>}{item.caption&&<figcaption>{item.caption}</figcaption>}</figure>)}</div></div>;break;
     case 'testimonial':content=<div className="portfolio-container cms-testimonial"><span className="portfolio-kicker">TESTIMONIAL</span><blockquote>{s.body}</blockquote><strong>{s.author||s.heading}</strong><span>{s.role}</span></div>;break;
-    case 'cta':content=<div className="portfolio-container cms-cta"><div><h2>{s.heading}</h2><p>{s.body}</p></div><Buttons links={s.buttons}/></div>;break;
+    case 'cta':content=<div className="portfolio-container cms-cta"><div><h2>{s.heading}</h2><p>{s.body}</p></div><Buttons links={s.buttons} style={s.buttonStyle}/></div>;break;
     case 'divider':content=<div className="portfolio-container cms-divider"><hr/></div>;break;
     case 'stats':content=<div className="portfolio-container portfolio-proof-grid">{s.items?.map((item,i)=><div key={i}><strong>{item.value}</strong><span>{item.label}</span></div>)}</div>;break;
     case 'projects':content=<div className="portfolio-container"><Heading section={s}/><div className="portfolio-projects">{site.projects.map(project=><article className="portfolio-project" key={project.slug}><div className="portfolio-project-top"><span>{project.number} / {project.descriptor}</span><span>{project.date}</span></div>{project.image&&<img className="cms-project-image" src={project.image} alt={project.client+" website screenshot"} loading="lazy"/>}<a className="portfolio-project-title" href={'/work/'+project.slug}><h3>{project.client}</h3><span>↗</span></a><p>{project.title}</p><div className="portfolio-project-end"><span>{project.facts[0]?.value}<small>{project.facts[0]?.label}</small></span><a href={'/work/'+project.slug}>{s.linkLabel} ↗</a></div></article>)}</div><p className="portfolio-work-caveat">{s.note}</p></div>;break;
     case 'expertise':content=<div className="portfolio-container"><Heading section={s}/><div className="portfolio-expertise-grid">{s.items?.map((item,i)=><div key={i}><span className="portfolio-expertise-num">{String(i+1).padStart(2,'0')}</span><h3>{item.heading}</h3><p>{item.body}</p></div>)}</div><div className="portfolio-skills">{s.skills?.map((skill,i)=><span key={i}>{skill}</span>)}</div></div>;break;
-    case 'about':content=<div className="portfolio-container portfolio-about"><div><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}</h2></div><div className="portfolio-about-copy">{s.paragraphs?.map((p,i)=><p key={i}>{p}</p>)}<Buttons links={s.buttons}/></div></div>;break;
-    case 'contact':content=<div className="portfolio-container portfolio-contact-inner"><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h2><div className="portfolio-contact-bottom"><p>{s.body}</p><Buttons links={s.buttons}/></div>{s.email&&<a className="portfolio-contact-email" href={'mailto:'+s.email}>{s.email}</a>}</div>;break;
-    default:content=<div className="portfolio-container cms-text"><h1>{s.heading}</h1><p>{s.body}</p><Buttons links={s.buttons}/></div>;
+    case 'about':content=<div className="portfolio-container portfolio-about"><div><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}</h2></div><div className="portfolio-about-copy">{s.paragraphs?.map((p,i)=><p key={i}>{p}</p>)}<Buttons links={s.buttons} style={s.buttonStyle}/></div></div>;break;
+    case 'contact':content=<div className="portfolio-container portfolio-contact-inner"><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h2><div className="portfolio-contact-bottom"><p>{s.body}</p><Buttons links={s.buttons} style={s.buttonStyle}/></div>{s.email&&<a className="portfolio-contact-email" href={'mailto:'+s.email}>{s.email}</a>}</div>;break;
+    default:content=<div className="portfolio-container cms-text"><h1>{s.heading}</h1><p>{s.body}</p><Buttons links={s.buttons} style={s.buttonStyle}/></div>;
   }
-  return <section id={s.id} className={classes} style={style}>{content}{s.image&&!['image','image_text'].includes(s.type)&&<div className="portfolio-container"><img className="cms-section-image" src={s.image} alt={s.heading||"Portfolio screenshot"} loading="lazy"/></div>}</section>;
+  return <section id={s.anchor||s.id} className={classes} style={style}>{content}{s.image&&!['image','image_text'].includes(s.type)&&<div className="portfolio-container"><img className="cms-section-image" src={s.image} alt={s.heading||"Portfolio screenshot"} loading="lazy"/></div>}</section>;
 }
