@@ -1,3 +1,4 @@
+import '../styles/cms-blocks.css';
 import type {CSSProperties} from 'react';
 import type {Link,Section,SiteContent} from './model';
 import {safeHref} from './model';
