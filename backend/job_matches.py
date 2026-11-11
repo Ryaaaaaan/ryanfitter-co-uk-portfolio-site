@@ -108,32 +108,9 @@ def valid_link(url):
 
 
 def score_match(title, description, employment, hours, confidence):
-    name = title.lower()
-    if not any(word in name for word in ROLE_WORDS):
-        return None
-    if any(word in name for word in REJECT_TITLE):
-        return None
-    score = 53
-    if any(w in name for w in ("ecommerce", "e-commerce", "merchandis", "shopify", "online trading")):
-        score += 20
-    elif any(w in name for w in ("seo", "crm", "email marketing", "digital marketing", "digital trading")):
-        score += 15
-    else:
-        score += 9
-    tech = sum(word in description.lower() for word in TECH_WORDS)
-    score += min(12, tech * 3)
-    _, start, end = hours_in(hours + " " + description[:1800])
-    if start is not None and 10 <= start <= 20 and end <= 30:
-        score += 17
-    elif any(x in employment.lower() for x in ("part time", "part-time", "contract", "freelance")):
-        score += 9
-    elif "full" in employment.lower():
-        score -= 23
-    if confidence == "review":
-        score -= 6
-    # Keep weaker-but-relevant roles in Explore instead of hiding them.
-    return min(100, max(0, score)) if score >= 40 else None
-
+    """Compatibility for older callers; uses the same CV + working-fit model."""
+    report = career_profile(title, description, employment, hours)
+    return report["score"] if report else None
 
 def normalize(job):
     title = plain(job.get("title", ""))[:200]
