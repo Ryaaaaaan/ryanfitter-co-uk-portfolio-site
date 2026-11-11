@@ -123,3 +123,20 @@
  .matches-card-actions>*{min-width:0}
  .matches-card-actions>*:last-child:nth-child(3){grid-column:1/-1}
 }
+
+/* Transparent location/source breakdown. Geography measures listing scope,
+   not the country of company incorporation or verified UK payroll. */
+.matches-geography-summary{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px 15px;
+  border:1px solid #d9e4dc;background:#f5f8f6;
+  border-radius:8px;padding:13px 15px;margin:14px 0 16px;
+  color:#46614e;font-size:11px;
+}
+.matches-geography-summary strong{font-size:12px;color:#244f38}
+.matches-geography-summary span{border-left:1px solid #d1ddd4;padding-left:11px}
+.matches-geography-summary b{color:#193f2d}
+.matches-geography-summary small{flex-basis:100%;font-size:10px;color:#61746a;line-height:1.45}
+@media(max-width:650px){
+  .matches-geography-summary{gap:10px 12px}
+  .matches-geography-summary span{border:0;padding:0}
+}
