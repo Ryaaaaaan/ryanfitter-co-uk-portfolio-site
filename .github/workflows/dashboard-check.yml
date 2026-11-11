@@ -25,6 +25,8 @@ jobs:
           node-version: "22"
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Install React TypeScript definitions for CI
+        run: npm install --no-save --no-package-lock --no-audit --no-fund @types/react@^19 @types/react-dom@^19
       - name: Typecheck CMS and dashboard
         run: npx tsc --noEmit
       - name: Build
