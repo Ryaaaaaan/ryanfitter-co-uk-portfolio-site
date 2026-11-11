@@ -332,7 +332,11 @@ export function CmsEditor({csrf}:{csrf:string}){
               <button type="button" onClick={()=>useTemplate(blankSite)}><b>Blank slate</b><small>One simple introduction</small></button></div>
           </div>}
           <div className={'visual-page-frame '+viewport} style={frameStyle}
-            onClickCapture={e=>{if((e.target as HTMLElement).closest('a,button'))e.preventDefault();}}>
+            onClickCapture={e=>{const target=e.target as HTMLElement;
+              if(target.closest('a,button'))e.preventDefault();
+              if(target.closest('.portfolio-header'))select('header',page);
+              else if(target.closest('.portfolio-footer'))select('footer',page);
+            }}>
             <PortfolioChrome site={draft}>
               {page==='home'?<main id="main">
                 {draft.sections.filter(s=>s.enabled).map(s=><div className={'visual-preview-section'+(selected===s.id?' is-selected':'')} key={s.id}
