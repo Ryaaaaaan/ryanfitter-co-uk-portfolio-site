@@ -157,7 +157,7 @@ class MatchStoreTest(unittest.TestCase):
         self.assertEqual(listed["uk_group"], "uk_listed")
         self.assertEqual(global_job["uk_group"], "worldwide")
         self.assertIn("GB listed", listed["location"])
-        self.assertIn("not", global_job["uk_eligibility"].lower())
+        self.assertIn("no uk-specific", global_job["uk_eligibility"].lower())
         self.assertIn("timezone", global_job["warning"].lower())
         self.assertNotIn("timezone", listed["warning"].lower())
         self.assertLess(global_job["score"], listed["score"])
