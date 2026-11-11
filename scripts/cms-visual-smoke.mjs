@@ -241,6 +241,66 @@ try{
   await page.setViewportSize({width:700,height:840});
   await page.locator('.visual-mobile-rail').click();
   assert.equal(await page.locator('.visual-cms-rail').isVisible(),true);
+  // Private Work board must be accessible from the overview, not "SOON".
+  let workTasks=[];
+  await page.route('**/admin/api/tasks',r=>{
+    const method=r.request().method();
+    if(method==='POST'){
+      const item=r.request().postDataJSON();
+      workTasks.push({...item,id:1,revision:1,created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
+      return r.fulfill(json({task:workTasks[0]}));
+    }
+    if(method==='PUT'){
+      const body=r.request().postDataJSON();
+      workTasks=workTasks.map(item=>item.id===1?{...body.task,id:1,revision:item.revision+1,
+        created_at:item.created_at,updated_at:new Date().toISOString()}:item);
+      return r.fulfill(json({task:workTasks[0]}));
+    }
+    return r.fulfill(json({tasks:workTasks}));
+  });
+  await page.route('**/admin/api/jobs',r=>r.fulfill(json({jobs:[]})));
+  const worldContract={
+    key:'global-test',company:'Motu Novu Test',title:'Jr E-Commerce Assistant',score:74,
+    cv_score:75,lifestyle_score:78,source:'Himalayas',hours:'5-15 hours/week',
+    employment_type:'Contractor',location:'Worldwide remote',salary:'$15–25/hr',
+    posted:'2026-11-04',state:'new',first_seen:'2026-11-11',last_seen:'2026-11-11',
+    role_tags:['Ecommerce'],seniority:'Junior / entry',reason:'Ecommerce tasks.',
+    warning:'Confirm UK contractor eligibility',confidence:'review',
+    engagement_route:'Independent contractor',
+    uk_eligibility:'Worldwide claim — UK terms unverified',cross_border_review:true,
+    remote_status:'Remote-labelled (unverified)',hours_fit:'Hours within 30/week',
+    fit_evidence:['Worldwide independent-contractor: verify invoicing.'],
+    apply_url:'https://example.com/world-job'
+  };
+  await page.route('**/admin/api/job-matches',r=>r.fulfill(json({
+    matches:[worldContract],scan:null,history:[]
+  })));
+  await page.setViewportSize({width:1400,height:850});
+  await page.goto('http://127.0.0.1:5173/admin',{waitUntil:'networkidle'});
+  assert.equal(await page.getByRole('link',{name:/Work board/}).count(),2,
+    'Overview and sidebar should both link to the ready Work board');
+  assert.equal(await page.getByText('Build your website.').count(),0,
+    'Overview must not show the old website milestone');
+  await page.goto('http://127.0.0.1:5173/admin/tasks',{waitUntil:'networkidle'});
+  await page.getByRole('heading',{name:'Work board',exact:true}).waitFor();
+  await page.getByRole('button',{name:'+ Add task'}).click();
+  await page.getByLabel('Task title').fill('Update LoftyCards listings');
+  await Promise.all([
+    page.waitForResponse(r=>r.url().endsWith('/admin/api/tasks')&&r.request().method()==='POST'),
+    page.getByRole('button',{name:'Save task'}).click()
+  ]);
+  await page.getByRole('button',{name:'Update LoftyCards listings'}).waitFor();
+  assert.equal(await page.getByText('1',{exact:true}).count()>0,true,'Open task count not updated');
+  await page.locator('select[aria-label="Move Update LoftyCards listings to"]').selectOption('in_progress');
+  assert.equal(workTasks[0].status,'in_progress');
+  await page.goto('http://127.0.0.1:5173/admin/job-matches',{waitUntil:'networkidle'});
+  await page.getByRole('heading',{name:'Job matches'}).waitFor();
+  assert.equal(await page.getByText('International contractor — review before applying').count(),1);
+  await page.getByLabel('Work arrangement').selectOption('employment');
+  assert.equal(await page.getByText('No matching vacancies').count(),1);
+  await page.getByRole('button',{name:'Reset filters'}).click();
+  assert.equal(await page.getByText('International contractor — review before applying').count(),1);
+  console.log('Workspace smoke passed: overview, Work board create/move, overseas job warning and advanced filters.');
   console.log('CMS browser smoke passed: centred canvas, responsive presets, sidebar-only templates, save/reload draft persistence, no recurring prompt, case studies and mobile editing.');
 }finally{
   await browser.close();
