@@ -83,7 +83,7 @@ try{
     .locator(':scope > label.visual-field').evaluateAll(nodes=>
       nodes.map(node=>node.textContent.trim().split('\n')[0].trim()));
   const orderedIndex=(name)=>contentOrder.findIndex(value=>value.startsWith(name));
-  assert(orderedIndex('Eyebrow')>=0&&orderedIndex('Eyebrow')<orderedIndex('Heading'),
+  assert(orderedIndex('Headline')>=0&&orderedIndex('Headline')<orderedIndex('Heading'),
     'Small eyebrow should appear ahead of the large heading');
   assert(orderedIndex('Heading')<orderedIndex('Body'),
     'Large heading should appear ahead of the supporting body copy');
