@@ -47,7 +47,17 @@ def validate(document):
                     check(item, TEMPLATES[item['type']], key, depth+1)
                 else: check(item, item_template, key, depth+1)
         elif isinstance(template, dict):
-            if not isinstance(value, dict) or set(value) - set(template): raise ValueError(f'Unknown fields in {key or "site"}')
+            if not isinstance(value, dict):
+                raise ValueError(f'{key or "site"} must be an object')
+            extras = set(value) - set(template)
+            if key in ('sections', 'projects'):
+                extras.discard('image')
+                if 'image' in value:
+                    media = value['image']
+                    if not isinstance(media, str) or (media and not re.fullmatch(r'/content/media/[a-f0-9]{32}\.(png|jpg|webp)', media)):
+                        raise ValueError('Images must use an uploaded CMS image URL')
+            if extras:
+                raise ValueError(f'Unknown fields in {key or "site"}')
             for field, example in template.items():
                 if field == 'note' and key == 'projects' and field not in value: continue
                 if field not in value: raise ValueError(f'Missing {field}')

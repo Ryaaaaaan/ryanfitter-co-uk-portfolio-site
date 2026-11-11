@@ -12,7 +12,7 @@ React, TypeScript and Vite personal portfolio for Ryan Fitter.
 
 ## Private workspace foundation
 
-- Unlinked `/admin` React dashboard shell for a future CMS, job tracker and task board.
+- `/admin` authenticated workspace with working portfolio CMS, application tracker and a planned personal task board.
 - **Server-side protection** via a Python Flask/Gunicorn gateway, OAuth 2.0
   authorization-code/PKCE flow and an explicitly allowlisted Cognito identity.
 - Intended to reuse **TradingLab's existing Cognito user pool in eu-west-2**
@@ -20,8 +20,7 @@ React, TypeScript and Vite personal portfolio for Ryan Fitter.
 - Deployable AWS CDK stack for an app client and isolated future DynamoDB/S3 data.
 - Tests, Nginx routes and systemd service examples.
 
-**The private dashboard is not live until the server, app client, and allowlist
-are provisioned.** No jobs, tasks, CMS content or media can be edited yet.
+**The private dashboard requires the existing deployed Cognito gateway.** The CMS, screenshot library and application tracker work on the private service; the task board remains planned.
 
 **Read [private dashboard deployment & security guide](docs/PRIVATE_DASHBOARD.md)
 before deploying.** The existing public Vite host must route ALL `/admin`
@@ -39,7 +38,10 @@ are **not** protected by Cognito.
 - `src/pages/HomePage.tsx` — public portfolio
 - `src/pages/WorkPage.tsx` — case studies
 - `src/portfolioData.ts` — editable public project content (until CMS exists)
-- `src/pages/AdminPage.tsx` — private dashboard UI shell
+- `src/pages/AdminPage.tsx` — private dashboard shell, links to CMS and job tracker
+- `src/jobs/JobsPage.tsx` — private application tracker
+- `backend/jobs.py` — validated SQLite job records
+- `backend/uploads.py` — private screenshot library and publish rules
 - `src/styles/admin.css` — private dashboard design
 - `backend/app.py` — Cognito PKCE/server session and route protection
 - `backend/tests/` — authentication tests
@@ -67,5 +69,5 @@ cookies, not insecure HTTP development logins.
 
 - Review the public portfolio PR and visual layout.
 - Connect and smoke-test the existing AWS user pool/app client and hosting.
-- Later implement a small CMS, task board and job application tracker, in
-  whichever order proves most useful.
+- Extend the task board and optionally add secure job match ingestion (not currently automatic).
+- Arrange off-instance backups for the private CMS, uploaded screenshots and job records.

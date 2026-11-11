@@ -15,6 +15,8 @@ import secrets
 import time
 from datetime import timedelta
 from backend.cms import ContentStore
+from backend.jobs import JobStore
+from backend.uploads import ImageLibrary, published_image_urls
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
@@ -64,6 +66,8 @@ def create_app() -> Flask:
     index_file = build_dir / "index.html"
 
     store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
+    jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
 
     app.secret_key = secret
     app.config.update(
@@ -74,7 +78,7 @@ def create_app() -> Flask:
         SESSION_COOKIE_PATH="/",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
         TRUSTED_HOSTS=[parsed_origin.hostname],
-        MAX_CONTENT_LENGTH=1024 * 1024,
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
     )
 
     def signed_in() -> bool:
@@ -198,7 +202,7 @@ def create_app() -> Flask:
             "authenticated": True,
             "email": session.get("email") or "",
             "csrf": session["csrf"],
-            "features": {"jobs": "planned", "tasks": "planned", "cms": "ready"},
+            "features": {"jobs": "ready", "tasks": "planned", "cms": "ready"},
         })
 
     @app.get("/content/site.json")
@@ -207,6 +211,76 @@ def create_app() -> Flask:
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+    @app.route("/admin/api/media", methods=["GET", "POST"])
+    def cms_media():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"images": media.list_images()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            uploaded = media.upload(request.files.get("file"))
+            return jsonify(uploaded), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.get("/content/media/<filename>")
+    def public_media(filename):
+        image_path = media.path_for(filename)
+        if image_path is None:
+            abort(404)
+        url = "/content/media/" + filename
+        if not signed_in() and url not in published_image_urls(store.read()["published"]):
+            abort(404)
+        mime = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}[filename.rsplit(".", 1)[1]]
+        response = send_file(image_path, mimetype=mime, conditional=False)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    @app.route("/admin/api/jobs", methods=["GET", "POST"])
+    def jobs_collection():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"jobs": jobs.all()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            job = jobs.create(request.get_json())
+            return jsonify({"job": job}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
+    @app.route("/admin/api/jobs/<int:job_id>", methods=["PUT", "DELETE"])
+    def job_detail(job_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        payload = request.get_json()
+        if not isinstance(payload, dict) or type(payload.get("revision")) is not int:
+            return jsonify({"error": "Revision required"}), 400
+        try:
+            if request.method == "DELETE":
+                jobs.delete(job_id, payload["revision"])
+                return "", 204
+            result = jobs.update(job_id, payload.get("job"), payload["revision"])
+            return jsonify({"job": result})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
+    def can_write():
+        csrf = request.headers.get("X-CSRF-Token", "")
+        return (bool(csrf) and hmac.compare_digest(csrf, session.get("csrf", ""))
+                and request.headers.get("Origin") == origin)
 
     @app.route("/admin/api/cms", methods=["GET", "PUT"])
     @app.post("/admin/api/cms/publish")
@@ -247,6 +321,7 @@ def create_app() -> Flask:
     @app.get("/admin")
     @app.get("/admin/")
     @app.get("/admin/cms")
+    @app.get("/admin/jobs")
     def dashboard():
         if not signed_in():
             return redirect("/admin/login", 302)

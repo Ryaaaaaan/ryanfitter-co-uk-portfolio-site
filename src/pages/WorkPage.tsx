@@ -23,7 +23,7 @@ export function WorkPage({slug}:{slug:string}){
         <a href="/#work" className="portfolio-back-link">← Back to selected work</a>
         <div className="portfolio-detail-header"><span className="portfolio-kicker">{project.number} / {project.descriptor}</span><span className="portfolio-detail-date">{project.date}</span></div>
         <h1>{project.title}</h1>
-        <p className="portfolio-detail-lead">{project.summary}</p>
+        <p className="portfolio-detail-lead">{project.summary}</p>{project.image&&<img className="cms-project-detail-image" src={project.image} alt={project.client+" website screenshot"} loading="lazy"/>}
         <div className="portfolio-detail-facts">
           {project.facts.map(fact=><div key={fact.label}><strong>{fact.value}</strong><span>{fact.label}</span></div>)}
         </div>

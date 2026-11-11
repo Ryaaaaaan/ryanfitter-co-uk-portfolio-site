@@ -13,6 +13,7 @@ export type Project = {
   result: string;
   links: { label: string; href: string }[];
   note?: string;
+  image?: string;
 };
 
 export const projects: Project[] = [

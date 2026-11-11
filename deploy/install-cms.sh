@@ -20,12 +20,18 @@ for name in robots.txt sitemap.xml; do
 done
 cp -a /etc/nginx/snippets/ryanfitter-admin.conf "$BACKUP/nginx-admin.conf"
 cp -a /etc/systemd/system/ryanfitter-admin.service "$BACKUP/admin.service"
-if [[ -f /var/lib/ryanfitter-admin/cms.sqlite3 ]]; then
-  "$RUNTIME/.venv/bin/python" - "$BACKUP/cms.sqlite3" <<'PY'
+for database in cms jobs; do
+  if [[ -f "/var/lib/ryanfitter-admin/$database.sqlite3" ]]; then
+    "$RUNTIME/.venv/bin/python" - "$BACKUP/$database.sqlite3" "$database" <<'PY'
 import sqlite3,sys
-with sqlite3.connect('/var/lib/ryanfitter-admin/cms.sqlite3') as source:
+with sqlite3.connect('/var/lib/ryanfitter-admin/' + sys.argv[2] + '.sqlite3') as source:
     with sqlite3.connect(sys.argv[1]) as target: source.backup(target)
 PY
+  fi
+done
+# Persistent uploaded screenshots remain outside the checkout during deployments.
+if [[ -d /var/lib/ryanfitter-admin/media ]]; then
+  tar -czf "$BACKUP/media.tar.gz" -C /var/lib/ryanfitter-admin media
 fi
 rollback(){
   trap - ERR
@@ -68,6 +74,10 @@ systemctl reload nginx
 CURL=(curl --resolve ryanfitter.co.uk:443:127.0.0.1 -sS)
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin)" == 302 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/cms)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/jobs)" == 302 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/jobs)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/media)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/content/media/missing.png)" == 404 ]]
 "${CURL[@]}" --fail https://ryanfitter.co.uk/content/site.json | "$RUNTIME/.venv/bin/python" -c 'import json,sys; d=json.load(sys.stdin); assert d["version"]==1 and isinstance(d["sections"],list)'
 for name in robots.txt sitemap.xml; do
   [[ ! -f "$SOURCE/dist/$name" ]] || install -m 0644 "$SOURCE/dist/$name" "$PUBLIC/$name"
