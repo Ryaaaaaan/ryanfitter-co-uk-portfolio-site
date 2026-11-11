@@ -41,6 +41,27 @@ class ContentValidationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(site)
 
+    def test_section_palette_and_multiline_headings_are_backward_compatible(self):
+        data = copy.deepcopy(STARTER)
+        hero = next(s for s in data['sections'] if s['type']=='hero')
+        hero['heading'] = 'Building better\\nshopping experiences'.replace('\\n','\n')
+        hero['style'].update(background='#17372a', text='#f2f8f2',
+                             accent='#a9dcba', mutedColor='#c2d9c7',
+                             panelColor='#244735', borderColor='#547461')
+        validate(data)
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContentStore(directory + '/cms.sqlite3')
+            saved = store.save(data, 0)
+            self.assertEqual(saved['draft']['sections'][0]['heading'], hero['heading'])
+            self.assertEqual(saved['draft']['sections'][0]['style']['panelColor'], '#244735')
+            self.assertNotEqual(saved['published'], data)
+            self.assertEqual(store.publish(1)['published'], data)
+        for key, invalid in (('panelColor', '#abc'), ('borderColor','not-a-colour')):
+            bad = copy.deepcopy(data)
+            bad['sections'][0]['style'][key] = invalid
+            with self.assertRaises(ValueError):
+                validate(bad)
+
     def test_portfolio_cards_grid_list_copy_visibility_and_save(self):
         data = copy.deepcopy(STARTER)
         section = next(s for s in data['sections'] if s['type']=='projects')
