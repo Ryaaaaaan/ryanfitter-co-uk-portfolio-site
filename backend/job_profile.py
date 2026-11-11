@@ -132,11 +132,24 @@ def profile(title: str, description: str = "", employment: str = "",
         cv -= 15
     cv = max(10, min(98, int(cv)))
 
-    mandatory = _found(combined, r"\b(hybrid|on.site|onsite|office.based|office attendance|"
-                     r"days? (?:per|a) week in (?:the )?office|regular travel|travel required)\b")
+    # Explicit office-day counts give a much more useful gradient than treating
+    # one day on site the same as five. Unspecified hybrid remains conservative.
+    office_day_match = re.search(
+        r"\b([1-5])\s*days?\s*(?:(?:a|per)\s*week\s*)?"
+        r"(?:in|at|on)\s*(?:the\s*)?(?:office|site)\b",
+        combined, re.I,
+    )
+    office_days = int(office_day_match.group(1)) if office_day_match else None
+    mandatory = office_days is not None or _found(
+        combined, r"\b(hybrid|on.site|onsite|office.based|office attendance|"
+        r"regular travel|travel required)\b"
+    )
     if mandatory:
-        remote_status = "Hybrid / attendance mentioned"
-        remote_points = 10
+        remote_status = (
+            f"Hybrid / onsite: {office_days} office day(s) per week (verify)"
+            if office_days is not None else "Hybrid / office attendance mentioned (verify)"
+        )
+        remote_points = max(0, 68 - office_days * 16) if office_days is not None else 18
     elif _found(combined, r"\b(in.office|in person only|office.only)\b"):
         remote_status = "Office attendance mentioned"
         remote_points = 0
@@ -181,11 +194,13 @@ def profile(title: str, description: str = "", employment: str = "",
     support = [label for label, pattern in SUPPORT_PATTERNS.items() if _found(spec, pattern)]
     lifestyle = round(0.63 * remote_points + 0.34 * hour_points + (7 if support else 0))
     if mandatory:
-        lifestyle = min(lifestyle, 34)
+        cap = {1: 58, 2: 46, 3: 34, 4: 23, 5: 12}.get(office_days, 37)
+        lifestyle = min(lifestyle, cap)
     lifestyle = max(0, min(99, lifestyle))
     overall = round(0.52 * cv + 0.48 * lifestyle)
     if mandatory:
-        overall = min(overall, 54)  # do not hide office constraint behind excellent CV score
+        overall = min(overall, {1: 64, 2: 57, 3: 50, 4: 40, 5: 30}.get(office_days, 54))
+        # Strong CV overlap cannot conceal an office requirement.
 
     evidence = []
     if tool_hits:
@@ -207,6 +222,7 @@ def profile(title: str, description: str = "", employment: str = "",
         "score": overall,
         "fit_evidence": evidence,
         "remote_status": remote_status,
+        "office_days": office_days,
         "hours_fit": hours_fit,
         "support_signals": support,
         "score_basis": "Rules-based estimate using CV evidence and listing text; not an employer or verified remote assessment.",
