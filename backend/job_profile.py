@@ -28,10 +28,24 @@ ROLE_PATTERNS = {
 }
 # CV evidence weights. Specialist UI design has deliberately lower weight than UX.
 CV_WEIGHTS = {
-    "Ecommerce": 22, "Merchandising": 22, "UX": 12, "UI": 4,
-    "Marketing": 17, "SEO": 17, "CRM & email": 13,
-    "Analytics & CRO": 15, "Product data & PIM": 19,
-    "Marketplace": 13, "Content": 11, "Management": 12,
+    "Ecommerce": 25, "Merchandising": 25, "UX": 17, "UI": 4,
+    "Marketing": 24, "SEO": 22, "CRM & email": 18,
+    "Analytics & CRO": 19, "Product data & PIM": 23,
+    "Marketplace": 15, "Content": 16, "Management": 14,
+}
+CV_ROLE_EVIDENCE = {
+    "Ecommerce": "Ecommerce trading across Shopify, Magento and BigCommerce",
+    "Merchandising": "Large-catalogue merchandising, categories and promotions",
+    "UX": "Website redesign, customer journey and conversion improvements",
+    "UI": "Some UX overlap; specialist visual UI craft is not evidenced",
+    "Marketing": "Paid campaigns, ecommerce marketing and promotions",
+    "SEO": "Hands-on search optimisation and content improvements",
+    "CRM & email": "Email marketing and ecommerce customer engagement",
+    "Analytics & CRO": "Analytics, conversion optimisation and performance reporting",
+    "Product data & PIM": "Product data, catalogue automation and Akeneo PIM",
+    "Marketplace": "eBay retail operations and online marketplace management",
+    "Content": "Product and website content creation and enrichment",
+    "Management": "Ecommerce and digital marketing management responsibilities",
 }
 CV_TOOLS = ("shopify", "bigcommerce", "akeneo", "magento", "google analytics",
             "ga4", "excel", "tableau", "seo", "google ads", "ecommerce", "product data",
@@ -119,7 +133,7 @@ def profile(title: str, description: str = "", employment: str = "",
     primary = sorted_weights[0] if sorted_weights else 0
     supporting = min(16, sum(sorted_weights[1:]) // 3)
     tool_hits = [tool for tool in CV_TOOLS if tool in spec or tool in lower_title]
-    cv = 42 + primary + supporting + min(17, len(tool_hits) * 3)
+    cv = 45 + primary + supporting + min(17, len(tool_hits) * 3)
     if seniority == "Head / director":
         cv -= 26
     elif seniority == "Senior / lead":
@@ -203,6 +217,9 @@ def profile(title: str, description: str = "", employment: str = "",
         # Strong CV overlap cannot conceal an office requirement.
 
     evidence = []
+    for tag in tags[:3]:
+        if tag in CV_ROLE_EVIDENCE:
+            evidence.append("CV experience: " + CV_ROLE_EVIDENCE[tag])
     if tool_hits:
         evidence.append("CV overlap: " + ", ".join(tool_hits[:5]))
     if cv < 65 and "UI" in tags:
