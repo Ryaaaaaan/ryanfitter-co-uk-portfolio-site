@@ -50,18 +50,44 @@ function Field({
 }:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage}){
  if(typeof value==='boolean')return <label className="visual-check"><input type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/><span>{pretty(name)}</span></label>;
  if(typeof value==='number'){
-   const bounded=name==='padding'||name==='fontSize'||name==='contentWidth';
-   const min=name==='contentWidth'?320:name==='fontSize'?12:0;
-   const max=name==='contentWidth'?1600:name==='fontSize'?48:240;
-   return <label className="visual-field">{pretty(name)} {bounded&&<output>{value}{name==='contentWidth'||name==='padding'||name==='fontSize'?'px':''}</output>}
-     {bounded?<input type="range" min={min} max={max} step={name==='contentWidth'?10:1} value={value} onChange={e=>onChange(Number(e.target.value))}/>:
-     <input type="number" value={value} onChange={e=>onChange(Number(e.target.value)||0)}/>}</label>;
+   const sliders:Record<string,[number,number,number,string]>={
+     padding:[0,240,1,'px'],fontSize:[12,48,1,'px'],contentWidth:[320,1600,10,'px'],
+     lineHeight:[0,3,.05,'×'],letterSpacing:[-8,12,.25,'px'],
+     paragraphSpacing:[-1,90,1,'px'],bodyWeight:[0,900,100,''],
+     headingSize:[0,160,1,'px'],headingLineHeight:[0,3,.05,'×'],
+     headingLetterSpacing:[-12,12,.25,'px'],headingWeight:[0,900,100,''],
+     statValueSize:[0,110,1,'px'],statLabelSize:[0,50,1,'px'],
+     columns:[0,12,1,''],gap:[-1,160,1,'px'],
+     split:[20,80,1,'%'],copyMaxWidth:[0,1200,10,'px']
+   };
+   const slider=sliders[name];
+   if(slider){
+     const [min,max,step,unit]=slider;
+     const inherited=(name==='gap'||name==='paragraphSpacing')?value<0:
+       ['lineHeight','headingLineHeight','headingSize','bodyWeight','headingWeight',
+        'statValueSize','statLabelSize','columns','copyMaxWidth'].includes(name)&&value===0;
+     return <div className="visual-field"><label htmlFor={'cms-setting-'+name}>{pretty(name)}</label>
+       <div className="visual-number-line">
+         <input id={'cms-setting-'+name} aria-label={pretty(name)} type="range" min={min} max={max}
+           step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/>
+         <input type="number" aria-label={pretty(name)+' exact value'} min={min} max={max} step={step}
+           value={value} onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))onChange(clamp(n,min,max));}}/>
+         <output>{inherited?'Auto':value+unit}</output>
+       </div>
+       {(name==='gap'||name==='paragraphSpacing')&&<small>−1 = inherit design spacing; 0 = no spacing.</small>}
+       {name==='columns'&&<small>0 = automatically divide available width between the items.</small>}
+       {name==='headingSize'&&<small>0 = inherit the current heading scale.</small>}
+     </div>;
+   }
+   return <label className="visual-field">{pretty(name)}
+     <input type="number" value={value} onChange={e=>onChange(Number(e.target.value)||0)}/></label>;
  }
  if(typeof value==='string'){
    if(name==='id'||name==='type')return <p className="visual-readonly">{pretty(name)}: <code>{value}</code></p>;
    const options=name==='font'?['sans','serif','mono']:
      name==='align'?['left','center','right']:
-     name==='imageSide'?['left','right']:null;
+     name==='imageSide'?['left','right']:
+     name==='verticalAlign'?['start','center','end']:null;
    if(options)return <label className="visual-field">{pretty(name)}<select value={value} onChange={e=>onChange(e.target.value)}>
      {options.map(o=><option key={o} value={o}>{pretty(o)}</option>)}
    </select></label>;
@@ -527,9 +553,46 @@ export function CmsEditor({csrf}:{csrf:string}){
             <button type="button" onClick={()=>duplicateSection(draft.sections.indexOf(section))}>Duplicate</button>
             <button type="button" onClick={()=>removeSection(draft.sections.indexOf(section))}>Delete</button>
           </div>
-          <Field value={{...section,image:section.image||''} as unknown as Value} name={sectionNames[section.type]||section.type}
-            sectionType={section.type} onPickImage={pickImage} onChange={v=>updateSection(v as unknown as Section)}/>
-        </>:project&&selectedProject?<>
+          <Field value={{...Object.fromEntries(Object.entries(section).filter(([key])=>key!=='layout')),
+             image:section.image||'',
+             style:{
+               background:section.style.background,text:section.style.text,accent:section.style.accent,
+               padding:section.style.padding,fontSize:section.style.fontSize,align:section.style.align
+             }} as Value}
+             name={sectionNames[section.type]||section.type} sectionType={section.type}
+             onPickImage={pickImage} onChange={v=>{const next=v as unknown as Section;
+               updateSection({...section,...next,style:{...section.style,...next.style}});
+             }}/>
+           <p className="visual-inspector-help">Typography controls apply to this section in the live preview and on the published site. Zero means the existing design unless indicated.</p>
+           <Field name="Typography & text spacing" sectionType={section.type} onPickImage={pickImage}
+             value={{
+               lineHeight:section.style.lineHeight??0,
+               letterSpacing:section.style.letterSpacing??0,
+               paragraphSpacing:section.style.paragraphSpacing??-1,
+               bodyWeight:section.style.bodyWeight??0,
+               headingSize:section.style.headingSize??0,
+               headingLineHeight:section.style.headingLineHeight??0,
+               headingLetterSpacing:section.style.headingLetterSpacing??0,
+               headingWeight:section.style.headingWeight??0,
+               ...(section.type==='stats'?{
+                 statValueSize:section.style.statValueSize??0,
+                 statLabelSize:section.style.statLabelSize??0
+               }:{})
+             } as Value}
+             onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
+           <Field name="Layout & spacing" sectionType={section.type} onPickImage={pickImage}
+             value={{
+               ...(['stats','projects','expertise','about','gallery'].includes(section.type)
+                 ?{columns:section.layout?.columns??0}:{}),
+               gap:section.layout?.gap??-1,
+               ...(['about','image_text','projects','expertise'].includes(section.type)
+                 ?{split:section.layout?.split??50}:{}),
+               ...(['about','image_text','cta','projects','expertise'].includes(section.type)
+                 ?{verticalAlign:section.layout?.verticalAlign??'start'}:{}),
+               ...(section.type==='about'?{copyMaxWidth:section.layout?.copyMaxWidth??0}:{})
+             } as Value}
+             onChange={v=>updateSection({...section,layout:{...section.layout,...(v as object)}})}/>
+         </>:project&&selectedProject?<>
           <div className="visual-inspector-section-actions">
              <button type="button" onClick={()=>{if(window.confirm('Remove this case study from your draft?')){edit({...draft,projects:draft.projects.filter(p=>p.slug!==project.slug)});setSelected('projects');}}}>Delete case study</button>
           </div>
