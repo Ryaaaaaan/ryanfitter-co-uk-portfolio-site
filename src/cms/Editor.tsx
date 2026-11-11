@@ -46,6 +46,26 @@ function newArrayItem(name:string,values:Value[],sectionType:string):Value{
  if(values.length)return cloneEmpty(values[values.length-1]);
  return '';
 }
+/** Sort inputs like the reader sees them: small eyebrow, large heading, copy,
+ * then supporting elements. The original object keys remain unchanged on save. */
+const contentFieldPriority=['eyebrow','index','descriptor','date','heading','client','emphasis','title',
+  'body','paragraphs','summary','value','label','caption','items','image','imageSide',
+  'skills','buttons','links','email','author','role','note','linkLabel','style',
+  'enabled','id','type','slug'];
+const orderedContentFields=(fields:Record<string,Value>,sectionType:string):[string,Value][]=>{
+  const entries=Object.entries(fields);
+  if(!sectionType)return entries;
+  const rank=(key:string)=>{const idx=contentFieldPriority.indexOf(key);return idx<0?14:idx;};
+  return entries.sort((a,b)=>rank(a[0])-rank(b[0]));
+};
+const blockColourPresets=[
+ {name:'Inherit',background:'',text:'',accent:'',mutedColor:'',panelColor:'',borderColor:''},
+ {name:'Paper',background:'#f7f8f3',text:'#172520',accent:'#24634b',mutedColor:'#52615a',panelColor:'#fffef9',borderColor:'#d9dfd5'},
+ {name:'Forest',background:'#17372a',text:'#f2f8f2',accent:'#a9dcba',mutedColor:'#c2d9c7',panelColor:'#244735',borderColor:'#547461'},
+ {name:'Slate',background:'#eff3f5',text:'#243449',accent:'#355c8a',mutedColor:'#586c7c',panelColor:'#ffffff',borderColor:'#c5d1da'},
+ {name:'Dark',background:'#151e1d',text:'#ecf2ef',accent:'#66cf9e',mutedColor:'#b0c9bd',panelColor:'#22302c',borderColor:'#41554d'},
+ {name:'Warm',background:'#fcf3e8',text:'#35271f',accent:'#a65c36',mutedColor:'#776257',panelColor:'#fffaf4',borderColor:'#e2ccb7'}
+] as const;
 function Field({
  value,onChange,name='Settings',sectionType='',onPickImage,anchorOptions=[]
 }:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage;
@@ -115,7 +135,7 @@ function Field({
        {value&&<button type="button" onClick={()=>onChange('')}>Remove</button>}</div>
    </div>;
    const isColor=['background','text','muted','accent','panel','headingColor','bodyColor',
-     'eyebrowColor','emphasisColor','mutedColor','primaryBackground','primaryText',
+     'eyebrowColor','emphasisColor','mutedColor','panelColor','borderColor','primaryBackground','primaryText',
      'secondaryBackground','secondaryText','borderColor'].includes(name)
      &&(value===''||/^#[0-9a-fA-F]{6}$/.test(value));
    if(isColor)return <label className="visual-field">{pretty(name)}
@@ -123,10 +143,12 @@ function Field({
        <input aria-label={pretty(name)+' hex value'} value={value} placeholder="Inherit" onChange={e=>onChange(e.target.value)}/></div>
      {value===''&&<small>Inherits the site theme</small>}
    </label>;
-   const multiline=['body','description','summary','challenge','result','note','text','caption','emphasis'].includes(name)||value.length>125;
+   const isHeading=['heading','emphasis','client','title'].includes(name);
+   const multiline=isHeading||['body','description','summary','challenge','result','note','text','caption'].includes(name)||value.length>125;
    return <label className="visual-field">{pretty(name)}
-    {multiline?<textarea rows={4} value={value} onChange={e=>onChange(e.target.value)}/>:
+    {multiline?<textarea rows={isHeading?3:4} value={value} onChange={e=>onChange(e.target.value)}/>:
     <input value={value} onChange={e=>onChange(e.target.value)}/>}
+    {isHeading&&<small>Press Enter to control where the heading breaks onto a new line.</small>}
    </label>;
  }
  if(Array.isArray(value)){
@@ -145,7 +167,7 @@ function Field({
  const fields=(name==='Details'&&sectionType&&'href' in value)
    ?{...value,variant:value.variant||'primary'}:value;
  return <fieldset className="visual-fieldset"><legend>{pretty(name)}</legend>
-  {Object.entries(fields).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
+  {orderedContentFields(fields,sectionType).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
  </fieldset>;
 }
 
@@ -661,14 +683,43 @@ export function CmsEditor({csrf}:{csrf:string}){
              onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>{const next=v as unknown as Section;
                updateSection({...section,...next,style:{...section.style,...next.style}});
              }}/>
-           <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
+          <fieldset className="visual-block-theme-presets">
+            <legend>Block theme</legend>
+            <p>Apply a colour palette just to this section. Fine-tune colours below.</p>
+            <div className="visual-block-preset-grid" role="group" aria-label="Block colour presets">
+              {blockColourPresets.map(preset=>{
+                const active=Object.entries(preset).every(([key,value])=>
+                  key==='name'||(section.style as unknown as Record<string,string>)[key]===value
+                  ||((section.style as unknown as Record<string,string>)[key]===undefined&&value===''));
+                return <button key={preset.name} type="button"
+                  aria-label={'Block theme '+preset.name} aria-pressed={active}
+                  onClick={()=>{
+                    const clearText={headingColor:'',bodyColor:'',eyebrowColor:'',emphasisColor:''};
+                    const {name,...colours}=preset;
+                    updateSection({...section,style:{...section.style,...clearText,...colours}});
+                  }}>
+                  <span className="visual-block-preset-swatch"
+                    style={{background:preset.background||draft.theme.background,
+                      color:preset.text||draft.theme.text,
+                      borderColor:preset.borderColor||draft.theme.muted}}>
+                    <i style={{background:preset.accent||draft.theme.accent}}/>
+                    Aa
+                  </span>
+                  <span>{preset.name}</span>
+                </button>;
+              })}
+            </div>
+          </fieldset>
+          <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
           <Field name="Individual text colours" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
             value={{
               headingColor:section.style.headingColor||'',
               bodyColor:section.style.bodyColor||'',
               eyebrowColor:section.style.eyebrowColor||'',
               emphasisColor:section.style.emphasisColor||'',
-              mutedColor:section.style.mutedColor||''
+              mutedColor:section.style.mutedColor||'',
+              panelColor:section.style.panelColor||'',
+              borderColor:section.style.borderColor||''
             } as Value}
             onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
           {!!section.buttons?.length&&<Field name="Button styles" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
