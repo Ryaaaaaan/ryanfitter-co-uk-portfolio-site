@@ -580,8 +580,8 @@ export function CmsEditor({csrf}:{csrf:string}){
           <button className="visual-upload-button" onClick={()=>openMedia()}>Open image library / upload</button>
           <p>{images.length} images in your library.</p>
         </>:selected==='metadata'?<>
-          <Field name="Page title" value={draft.title} onChange={v=>edit({...draft,title:v as string})} onPickImage={pickImage}/>
-          <Field name="Description" value={draft.description} onChange={v=>edit({...draft,description:v as string})} onPickImage={pickImage}/>
+          <Field name="Page title" value={draft.title} onChange={v=>edit({...draft,title:v as string})} onPickImage={pickImage} anchorOptions={anchorOptions}/>
+          <Field name="Description" value={draft.description} onChange={v=>edit({...draft,description:v as string})} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='theme'||selected==='header'||selected==='footer'?<>
           {selected==='theme'&&<div className="visual-presets"><strong>Colour presets</strong>
             {[
@@ -590,7 +590,7 @@ export function CmsEditor({csrf}:{csrf:string}){
               {name:'Dark',background:'#151e1d',text:'#ecf2ef',muted:'#a9b7b0',accent:'#66cf9e',panel:'#22302c'}
             ].map(preset=><button type="button" key={preset.name} onClick={()=>edit({...draft,theme:{...draft.theme,...preset}})}>{preset.name}</button>)}
           </div>}
-          <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage}/>
+          <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='projects'?<>
           <h3>Case studies</h3><p>Select a project on the left or click Add case study to create a new draft page.</p>
           <button onClick={addProject}>+ Add case study</button>
@@ -600,18 +600,50 @@ export function CmsEditor({csrf}:{csrf:string}){
             <button type="button" onClick={()=>duplicateSection(draft.sections.indexOf(section))}>Duplicate</button>
             <button type="button" onClick={()=>removeSection(draft.sections.indexOf(section))}>Delete</button>
           </div>
-          <Field value={{...Object.fromEntries(Object.entries(section).filter(([key])=>key!=='layout')),
+          <div className="visual-anchor-controls">
+            <label htmlFor="cms-section-anchor">Section anchor for links</label>
+            <div className="visual-anchor-input"><span>#</span>
+              <input id="cms-section-anchor" value={section.anchor||section.id}
+                aria-label="Section anchor" onChange={e=>changeAnchor(section,e.target.value)}/>
+            </div>
+            <small>Use #{section.anchor||section.id} in buttons and navigation. Existing links update when this changes.</small>
+          </div>
+          <Field value={{...Object.fromEntries(Object.entries(section).filter(([key])=>!['layout','anchor','buttonStyle'].includes(key))),
              image:section.image||'',
              style:{
                background:section.style.background,text:section.style.text,accent:section.style.accent,
                padding:section.style.padding,fontSize:section.style.fontSize,align:section.style.align
              }} as Value}
              name={sectionNames[section.type]||section.type} sectionType={section.type}
-             onPickImage={pickImage} onChange={v=>{const next=v as unknown as Section;
+             onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>{const next=v as unknown as Section;
                updateSection({...section,...next,style:{...section.style,...next.style}});
              }}/>
-           <p className="visual-inspector-help">Typography controls apply to this section in the live preview and on the published site. Zero means the existing design unless indicated.</p>
-           <Field name="Typography & text spacing" sectionType={section.type} onPickImage={pickImage}
+           <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
+          <Field name="Individual text colours" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+            value={{
+              headingColor:section.style.headingColor||'',
+              bodyColor:section.style.bodyColor||'',
+              eyebrowColor:section.style.eyebrowColor||'',
+              emphasisColor:section.style.emphasisColor||'',
+              mutedColor:section.style.mutedColor||''
+            } as Value}
+            onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
+          {!!section.buttons?.length&&<Field name="Button styles" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+            value={{
+              alignment:section.buttonStyle?.alignment||'right',
+              radius:section.buttonStyle?.radius??5,
+              paddingX:section.buttonStyle?.paddingX??19,
+              paddingY:section.buttonStyle?.paddingY??15,
+              gap:section.buttonStyle?.gap??26,
+              primaryBackground:section.buttonStyle?.primaryBackground||'',
+              primaryText:section.buttonStyle?.primaryText||'',
+              secondaryBackground:section.buttonStyle?.secondaryBackground||'',
+              secondaryText:section.buttonStyle?.secondaryText||'',
+              borderColor:section.buttonStyle?.borderColor||''
+            } as Value}
+            onChange={v=>updateSection({...section,buttonStyle:{...section.buttonStyle,...(v as ButtonStyle)}})}/>}
+          <p className="visual-inspector-help">Typography controls update the live preview and published site. Zero inherits the original design unless indicated.</p>
+           <Field name="Typography & text spacing" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
              value={{
                lineHeight:section.style.lineHeight??0,
                letterSpacing:section.style.letterSpacing??0,
@@ -627,7 +659,7 @@ export function CmsEditor({csrf}:{csrf:string}){
                }:{})
              } as Value}
              onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
-           <Field name="Layout & spacing" sectionType={section.type} onPickImage={pickImage}
+           <Field name="Layout & spacing" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
              value={{
                ...(['stats','projects','expertise','about','gallery'].includes(section.type)
                  ?{columns:section.layout?.columns??0}:{}),
@@ -644,7 +676,7 @@ export function CmsEditor({csrf}:{csrf:string}){
              <button type="button" onClick={()=>{if(window.confirm('Remove this case study from your draft?')){edit({...draft,projects:draft.projects.filter(p=>p.slug!==project.slug)});setSelected('projects');}}}>Delete case study</button>
           </div>
           <Field name="Case study" value={{...project,image:project.image||''} as unknown as Value}
-            sectionType="project" onPickImage={pickImage} onChange={v=>updateProject(v as unknown as Project)}/>
+            sectionType="project" onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>updateProject(v as unknown as Project)}/>
         </>:<p>Select a section in the preview or the left panel to start editing.</p>}
         </div>
       </aside>
