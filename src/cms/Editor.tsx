@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import type {CSSProperties,KeyboardEvent as ReactKeyboardEvent,PointerEvent as ReactPointerEvent} from 'react';
-import type {SiteContent,Section} from './model';
+import type {ButtonStyle,SiteContent,Section} from './model';
 import {blankSite,starterSite,screenshotSection,extraSections,clone} from './model';
 import type {Project} from '../portfolioData';
 import {PortfolioChrome} from '../components/PortfolioChrome';
@@ -33,7 +33,8 @@ const cloneEmpty=(value:Value):Value=>
  typeof value==='string'?'':typeof value==='number'?value:typeof value==='boolean'?value:
  Array.isArray(value)?[]:Object.fromEntries(Object.entries(value).map(([k,v])=>[k,cloneEmpty(v)]));
 function newArrayItem(name:string,values:Value[],sectionType:string):Value{
- if(name==='links'||name==='buttons')return {label:'New link',href:'#contact'};
+ if(name==='links')return {label:'New link',href:'#contact'};
+ if(name==='buttons')return {label:'New button',href:'#contact',variant:'outline'};
  if(name==='projects')return {...clone(starterSite.projects[0]),slug:'new-project-'+Date.now(),client:'New project'} as unknown as Value;
  if(name==='items'){
    if(sectionType==='gallery')return {image:'',caption:'New screenshot'};
@@ -46,8 +47,9 @@ function newArrayItem(name:string,values:Value[],sectionType:string):Value{
  return '';
 }
 function Field({
- value,onChange,name='Settings',sectionType='',onPickImage
-}:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage}){
+ value,onChange,name='Settings',sectionType='',onPickImage,anchorOptions=[]
+}:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage;
+  anchorOptions?:{label:string;id:string}[]}){
  if(typeof value==='boolean')return <label className="visual-check"><input type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/><span>{pretty(name)}</span></label>;
  if(typeof value==='number'){
    const sliders:Record<string,[number,number,number,string]>={
@@ -87,16 +89,32 @@ function Field({
    const options=name==='font'?['sans','serif','mono']:
      name==='align'?['left','center','right']:
      name==='imageSide'?['left','right']:
-     name==='verticalAlign'?['start','center','end']:null;
+     name==='verticalAlign'?['start','center','end']:
+     name==='alignment'?['left','center','right']:
+     name==='variant'?['primary','outline','text']:null;
    if(options)return <label className="visual-field">{pretty(name)}<select value={value} onChange={e=>onChange(e.target.value)}>
      {options.map(o=><option key={o} value={o}>{pretty(o)}</option>)}
    </select></label>;
+   if(name==='href')return <div className="visual-field visual-link-field">
+     <label>Link destination</label>
+     <select aria-label="Choose section to scroll to"
+       value={anchorOptions.some(a=>'#'+a.id===value)?value:'custom'}
+       onChange={e=>{if(e.target.value!=='custom')onChange(e.target.value);}}>
+       <option value="custom">External URL, email or custom path</option>
+       {anchorOptions.map(a=><option key={a.id} value={'#'+a.id}>Scroll to {a.label} (#{a.id})</option>)}
+     </select>
+     <input aria-label="Link URL" value={value} onChange={e=>onChange(e.target.value)}
+       placeholder="#contact or https://example.com"/>
+     <small>Links starting with # scroll to that section when the site is published.</small>
+   </div>;
    if(name==='image')return <div className="visual-field visual-image-field"><strong>Image</strong>
      {value?<img src={value} alt="Selected portfolio media" loading="lazy"/>:<div className="visual-image-empty">No image selected</div>}
      <div className="visual-button-row"><button type="button" onClick={()=>onPickImage(url=>onChange(url))}>{value?'Change image':'Choose image'}</button>
        {value&&<button type="button" onClick={()=>onChange('')}>Remove</button>}</div>
    </div>;
-   const isColor=['background','text','muted','accent','panel'].includes(name)
+   const isColor=['background','text','muted','accent','panel','headingColor','bodyColor',
+     'eyebrowColor','emphasisColor','mutedColor','primaryBackground','primaryText',
+     'secondaryBackground','secondaryText','borderColor'].includes(name)
      &&(value===''||/^#[0-9a-fA-F]{6}$/.test(value));
    if(isColor)return <label className="visual-field">{pretty(name)}
      <div className="visual-colour-row"><input type="color" aria-label={pretty(name)+' colour'} value={/^#[0-9a-fA-F]{6}$/.test(value)?value:'#ffffff'} onChange={e=>onChange(e.target.value)}/>
@@ -117,13 +135,13 @@ function Field({
         <button type="button" disabled={i===value.length-1} onClick={()=>{const next=[...value];[next[i],next[i+1]]=[next[i+1],next[i]];onChange(next);}}>↓</button>
         <button type="button" onClick={()=>onChange(value.filter((_,j)=>j!==i))}>×</button>
        </div></div>
-       <Field value={item} name={typeof item==='object'?'Details':pretty(name)+' '+(i+1)} onChange={v=>onChange(value.map((x,j)=>j===i?v:x))} sectionType={sectionType} onPickImage={onPickImage}/>
+       <Field value={item} name={typeof item==='object'?'Details':pretty(name)+' '+(i+1)} onChange={v=>onChange(value.map((x,j)=>j===i?v:x))} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions}/>
      </div>)}
      <button type="button" className="visual-add-mini" onClick={()=>onChange([...value,newArrayItem(name,value,sectionType)])}>+ Add {name==='items'?'item':name==='links'?'link':'entry'}</button>
    </fieldset>;
  }
  return <fieldset className="visual-fieldset"><legend>{pretty(name)}</legend>
-  {Object.entries(value).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
+  {Object.entries(value).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
  </fieldset>;
 }
 
