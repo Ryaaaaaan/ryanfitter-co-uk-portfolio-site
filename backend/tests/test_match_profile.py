@@ -42,7 +42,32 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("Merchandising", p["role_tags"])
         self.assertEqual(p["seniority"], "Managerial title")
         self.assertIn("unverified", p["remote_status"].lower())
-        self.assertEqual(p["profile_version"], 2)
+        self.assertEqual(p["profile_version"], 3)
+
+    def test_global_independent_contractors_are_not_overscored_as_uk_employment(self):
+        global_contract = profile(
+            "Jr. E-Commerce Assistant (Flex-Time) (Remote/Global)",
+            "Independent contractor supporting Shopify online stores, ecommerce marketing, "
+            "SEO, customer service and product inventory.",
+            "Contractor", "5-15 hours/week", "Worldwide remote")
+        self.assertEqual(global_contract["engagement_route"], "Independent contractor")
+        self.assertTrue(global_contract["cross_border_review"])
+        self.assertIn("Worldwide", global_contract["uk_eligibility"])
+        self.assertLessEqual(global_contract["score"], 74)
+        self.assertLessEqual(global_contract["lifestyle_score"], 78)
+        self.assertTrue(any("invoicing" in e for e in global_contract["fit_evidence"]))
+        same_role_in_uk = profile(
+            "Jr. E-Commerce Assistant (Flex-Time)",
+            "Shopify ecommerce marketing SEO and inventory management",
+            "Part-time", "15 hours per week", "UK remote")
+        self.assertFalse(same_role_in_uk["cross_border_review"])
+        self.assertGreater(same_role_in_uk["lifestyle_score"], global_contract["lifestyle_score"])
+
+    def test_explicit_non_uk_location_restriction_is_flagged(self):
+        p = profile("Ecommerce Manager", "Shopify. Must be based in the United States.",
+                    "Contract", "20 hours/week", "US only")
+        self.assertTrue(p["uk_restricted"])
+        self.assertLessEqual(p["score"],20)
 
     def test_ui_experience_not_oversold_as_ux(self):
         ux = profile("Ecommerce UX Executive", "Website redesign, CRO, user experience",
