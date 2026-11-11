@@ -110,6 +110,13 @@ export function CmsEditor({csrf}:{csrf:string}){
  const [dragIndex,setDragIndex]=useState<number|null>(null);
  const [undoSite,setUndoSite]=useState<SiteContent|null>(null);
  const stageRef=useRef<HTMLDivElement>(null);
+ const [stageWidth,setStageWidth]=useState(1200);
+ useEffect(()=>{
+   const el=stageRef.current;if(!el)return;
+   const observer=new ResizeObserver(entries=>setStageWidth(entries[0].contentRect.width));
+   observer.observe(el);setStageWidth(el.clientWidth);
+   return ()=>observer.disconnect();
+ },[draft!==null,focus]);
 
  async function loadMedia(){
    try{
@@ -221,7 +228,7 @@ export function CmsEditor({csrf}:{csrf:string}){
  }
  const section=draft?.sections.find(x=>x.id===selected);
  const project=draft?.projects.find(x=>selected==='project:'+x.slug);
- const projectForPreview=draft?.projects.find(x=>x.slug===(project?.slug||draft.projects[0]?.slug));
+ const projectForPreview=draft?.projects.find(x=>x.slug===(project?.slug||draft?.projects[0]?.slug));
  function updateProject(value:Project){
    if(!draft||!project)return;
    edit({...draft,projects:draft.projects.map(p=>p.slug===project.slug?value:p)});
@@ -240,7 +247,9 @@ export function CmsEditor({csrf}:{csrf:string}){
  const settings=['sections','theme','header','footer','metadata','projects','media'];
  const selectedTitle=section?sectionNames[section.type]||pretty(section.type):project?project.client:pretty(selected);
  const statusText=busy?'Working…':dirty?'Unsaved draft changes':revision===published?'All changes published':'Saved draft awaiting publication';
- const frameStyle={'--cms-live-width':viewport==='desktop'?'1140px':viewport==='tablet'?'768px':'390px'} as CSSProperties;
+ const designWidth=viewport==='desktop'?1140:viewport==='tablet'?768:390;
+ const previewZoom=Math.min(1,Math.max(.33,(stageWidth-68)/designWidth));
+ const frameStyle={'--cms-live-width':designWidth+'px',zoom:previewZoom} as CSSProperties;
 
  function inspect(key:string){select(key);}
  function onCanvasKey(e:ReactKeyboardEvent<HTMLDivElement>,id:string){
@@ -364,7 +373,7 @@ export function CmsEditor({csrf}:{csrf:string}){
               {name:'Dark',background:'#151e1d',text:'#ecf2ef',muted:'#a9b7b0',accent:'#66cf9e',panel:'#22302c'}
             ].map(preset=><button type="button" key={preset.name} onClick={()=>edit({...draft,theme:{...draft.theme,...preset}})}>{preset.name}</button>)}
           </div>}
-          <Field value={draft[selected] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage}/>
+          <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage}/>
         </>:selected==='projects'?<>
           <h3>Case studies</h3><p>Select a project on the left or click Add case study to create a new draft page.</p>
           <button onClick={addProject}>+ Add case study</button>
