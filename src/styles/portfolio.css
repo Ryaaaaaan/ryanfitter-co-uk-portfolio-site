@@ -197,3 +197,153 @@
 .cms-site .cms-project-detail-image{width:100%;max-height:720px;object-fit:contain;border:1px solid #d9dfd5;border-radius:8px;margin:0 0 35px;background:#fff}
 
 .cms-screenshot-figure{margin-block:0}.cms-screenshot-figure h2{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.06em;margin:0 0 8px}.cms-screenshot-figure>p{max-width:800px;color:var(--pf-muted)}.cms-screenshot-figure img{width:100%;max-height:700px;object-fit:contain;border:1px solid #d9dfd5;border-radius:8px;background:white}.cms-screenshot-figure figcaption{font-size:12px;color:var(--pf-muted);margin-top:13px}.cms-screenshot-placeholder{display:grid;place-items:center;min-height:260px;padding:30px;background:var(--pf-panel);color:var(--pf-muted);border:1px dashed #b7c9b9;border-radius:7px;text-align:center}
+
+/* Visual CMS section controls: data-driven grids, adjustable splits and typography.
+   Scoped to CMS sections so the standard portfolio and case-study styles are unchanged. */
+.cms-section-stats .portfolio-proof-grid{
+  grid-template-columns:repeat(var(--cms-grid-columns,4),minmax(0,1fr));
+  gap:var(--cms-layout-gap,0px);
+}
+.cms-section-stats .portfolio-proof-grid>div{
+  min-width:0;
+  padding:28px 22px 26px;
+  border-right:1px solid #d1dad0;
+  border-bottom:0;
+}
+.cms-section-stats .portfolio-proof-grid>div:first-child{padding-left:0}
+.cms-section-stats .portfolio-proof-grid>div:last-child{border-right:0}
+.cms-section-projects .portfolio-projects,
+.cms-section-expertise .portfolio-expertise-grid{
+  grid-template-columns:repeat(var(--cms-grid-columns,3),minmax(0,1fr));
+}
+.cms-section-projects .portfolio-projects{gap:var(--cms-layout-gap,15px)}
+.cms-section-expertise .portfolio-expertise-grid{column-gap:var(--cms-layout-gap,0px)}
+.cms-section-gallery.cms-layout-custom-columns .cms-gallery-grid{
+  grid-template-columns:repeat(var(--cms-grid-columns,2),minmax(0,1fr));
+}
+.cms-section-gallery .cms-gallery-grid{gap:var(--cms-layout-gap,24px)}
+.cms-section .portfolio-section-heading{
+  grid-template-columns:var(--cms-split,1.15fr .6fr);
+  gap:var(--cms-layout-gap,80px);
+  align-items:var(--cms-layout-align,end);
+}
+.cms-section .portfolio-about{
+  grid-template-columns:var(--cms-split,1fr 1fr);
+  gap:var(--cms-layout-gap,70px);
+  align-items:var(--cms-layout-align,start);
+}
+.cms-section-about.cms-layout-single .portfolio-about{grid-template-columns:minmax(0,1fr)}
+.cms-section .portfolio-about-copy{min-width:0;max-width:var(--cms-copy-width,none)}
+.cms-section .cms-image-text{
+  grid-template-columns:var(--cms-split,1fr 1fr);
+  gap:var(--cms-layout-gap,8%);
+  align-items:var(--cms-layout-align,center);
+}
+.cms-section .cms-cta{gap:var(--cms-layout-gap,22px);align-items:var(--cms-layout-align,center)}
+.cms-section .portfolio-hero-bottom{gap:var(--cms-layout-gap,40px)}
+.cms-section.cms-custom-body-line :is(p,blockquote,.portfolio-proof-grid span,.portfolio-expertise-grid span){
+  line-height:var(--cms-body-line-height);
+}
+.cms-section.cms-custom-letter-spacing :is(p,blockquote,.portfolio-proof-grid span,.portfolio-kicker,.portfolio-overline,.portfolio-hero-index){
+  letter-spacing:var(--cms-letter-spacing);
+}
+.cms-section.cms-custom-paragraph-spacing p{margin-bottom:var(--cms-paragraph-spacing)}
+.cms-section.cms-custom-body-weight p{font-weight:var(--cms-body-weight)}
+.cms-section.cms-custom-heading-size :is(h1,h2,h3){font-size:var(--cms-heading-size)}
+.cms-section.cms-custom-heading-line :is(h1,h2,h3){line-height:var(--cms-heading-line-height)}
+.cms-section.cms-custom-heading-spacing :is(h1,h2,h3){letter-spacing:var(--cms-heading-letter-spacing)}
+.cms-section.cms-custom-heading-weight :is(h1,h2,h3){font-weight:var(--cms-heading-weight)}
+.cms-section-stats.cms-custom-stat-value .portfolio-proof-grid strong{font-size:var(--cms-stat-value-size)}
+.cms-section-stats.cms-custom-stat-label .portfolio-proof-grid span{font-size:var(--cms-stat-label-size)}
+@media(max-width:950px){
+  .cms-section-stats .portfolio-proof-grid{
+    grid-template-columns:repeat(var(--cms-tablet-columns,2),minmax(0,1fr));
+  }
+  .cms-section-stats .portfolio-proof-grid>div{
+    padding:20px;
+    border-right:0;
+    border-bottom:0;
+  }
+  .cms-section-stats .portfolio-proof-grid>div:nth-child(even){border-left:1px solid #d1dad0}
+  .cms-section .portfolio-section-heading{grid-template-columns:minmax(0,1fr);gap:20px}
+  .cms-section-projects .portfolio-projects,
+  .cms-section-expertise .portfolio-expertise-grid,
+  .cms-section-gallery.cms-layout-custom-columns .cms-gallery-grid{
+    grid-template-columns:repeat(var(--cms-tablet-columns,2),minmax(0,1fr));
+  }
+}
+@media(max-width:600px){
+  .cms-section-stats .portfolio-proof-grid,
+  .cms-section-projects .portfolio-projects,
+  .cms-section-expertise .portfolio-expertise-grid,
+  .cms-section-gallery.cms-layout-custom-columns .cms-gallery-grid{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .cms-section-stats .portfolio-proof-grid>div{padding:20px 0;border:0!important}
+  .cms-section .portfolio-about,
+  .cms-section .cms-image-text{grid-template-columns:minmax(0,1fr);gap:var(--cms-layout-gap,27px)}
+}
+
+
+/* Every editable CMS block inherits the site theme, with explicit per-block
+   overrides applied to all appropriate descendants (including dark contact). */
+.cms-site .cms-section{scroll-margin-top:90px}
+.cms-section .portfolio-kicker,
+.cms-section .portfolio-overline,
+.cms-section .portfolio-expertise-num,
+.cms-section .portfolio-project-title>span,
+.cms-section .portfolio-project-end>a{
+  color:var(--cms-eyebrow-color,var(--pf-accent));
+}
+.cms-section.cms-override-heading-color :is(h1,h2,h3){
+  color:var(--cms-heading-color);
+}
+.cms-section.cms-override-body-color :is(
+  p,blockquote,.portfolio-proof-grid span,.portfolio-project-end small,
+  .portfolio-expertise-grid p,.portfolio-work-caveat,
+  .portfolio-hero-intro>span,.portfolio-contact-email,figcaption
+){
+  color:var(--cms-body-color);
+}
+.cms-section.cms-override-eyebrow-color :is(
+  .portfolio-kicker,.portfolio-overline,.portfolio-expertise-num,
+  .portfolio-project-title>span,.portfolio-project-end>a
+){
+  color:var(--cms-eyebrow-color,var(--pf-accent));
+}
+.cms-section :is(h1,h2) em{
+  color:var(--cms-emphasis-color,var(--pf-accent));
+}
+.cms-section :is(.portfolio-button,.portfolio-button-primary,.portfolio-button-outline,.portfolio-button-text){
+  border-radius:var(--cms-btn-radius,5px);
+  padding:var(--cms-btn-pad-y,15px) var(--cms-btn-pad-x,19px);
+  gap:var(--cms-btn-gap,26px);
+}
+.cms-section .portfolio-button-primary{
+  background:var(--cms-btn-primary-bg,var(--pf-ink));
+  border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--pf-ink)));
+  color:var(--cms-btn-primary-text,#ffffff)!important;
+}
+.cms-section.cms-section-contact .portfolio-button-primary{
+  background:var(--cms-btn-primary-bg,var(--pf-bg));
+  border-color:var(--cms-btn-border-color,var(--cms-btn-primary-bg,var(--pf-bg)));
+  color:var(--cms-btn-primary-text,var(--pf-ink))!important;
+}
+.cms-section .portfolio-button-outline{
+  background:var(--cms-btn-secondary-bg,transparent);
+  border-color:var(--cms-btn-border-color,currentColor);
+  color:var(--cms-btn-secondary-text,inherit)!important;
+}
+.cms-section .portfolio-button-text{
+  background:transparent;
+  border-color:transparent;
+  color:var(--cms-btn-secondary-text,var(--pf-accent))!important;
+  text-decoration:underline;
+  text-underline-offset:4px;
+}
+.cms-section .portfolio-button-primary:hover{
+  filter:brightness(1.12);
+}
+.cms-section .portfolio-button-outline:hover{filter:brightness(.97)}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}

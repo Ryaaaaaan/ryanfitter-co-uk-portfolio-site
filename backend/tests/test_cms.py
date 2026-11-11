@@ -41,6 +41,55 @@ class ContentValidationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(site)
 
+    def test_granular_typography_and_layout_persist(self):
+        site = copy.deepcopy(STARTER)
+        stats = next(s for s in site['sections'] if s['type']=='stats')
+        stats['items'] = stats['items'][:3]
+        stats['layout'] = {'columns': 0, 'gap': 24}
+        stats['style'].update({
+            'lineHeight': 1.7, 'paragraphSpacing': 12, 'headingSize': 54,
+            'statValueSize': 42, 'statLabelSize': 14, 'headingColor': '#142e22',
+            'bodyColor': '#445566', 'eyebrowColor': '#00aa88',
+            'emphasisColor': '#34cc99', 'mutedColor': '#8a8a8a'
+        })
+        contact = next(s for s in site['sections'] if s['type']=='contact')
+        contact['anchor'] = 'contact-now'
+        contact['buttonStyle'] = {
+            'alignment': 'center', 'radius': 16, 'paddingX': 23,
+            'paddingY': 10, 'gap': 14,
+            'primaryBackground': '#0f3827', 'primaryText': '#ffffff',
+            'secondaryBackground': '', 'secondaryText': '#184634',
+            'borderColor': '#184634'
+        }
+        contact['buttons'][0]['href'] = '#contact-now'
+        contact['buttons'][0]['variant'] = 'text'
+        validate(site)
+        with tempfile.TemporaryDirectory() as folder:
+            store = ContentStore(folder + '/cms.sqlite3')
+            saved = store.save(site, 0)
+            self.assertEqual(saved['draft']['sections'], site['sections'])
+            self.assertNotEqual(saved['published'], site)
+            store.publish(1)
+            self.assertEqual(store.read()['published'], site)
+
+    def test_rejects_invalid_anchor_button_and_colour_inputs(self):
+        cases = [
+            lambda s: s.update(anchor='invalid with spaces'),
+            lambda s: s.update(anchor='main'),
+            lambda s: s.update(buttonStyle={'primaryBackground':'javascript:alert(1)'}),
+            lambda s: s.update(buttonStyle={'radius':200}),
+            lambda s: s['style'].update(headingColor='red'),
+            lambda s: s.update(buttonStyle={'alignment':'unsafe'}),
+            lambda s: s['buttons'][0].update(variant='unsafe'),
+        ]
+        for mutate in cases:
+            data = copy.deepcopy(STARTER)
+            mutate(next(s for s in data['sections'] if s['type']=='hero'))
+            with self.assertRaises(ValueError): validate(data)
+        data = copy.deepcopy(STARTER)
+        data['sections'][1]['anchor'] = data['sections'][0]['id']
+        with self.assertRaises(ValueError): validate(data)
+
     def test_rejects_unsafe_links_styles_and_duplicate_ids(self):
         for mutate in (
             lambda d: d['header']['links'].append({'label': 'bad', 'href': 'javascript:alert(1)'}),

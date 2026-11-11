@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import type {CSSProperties,KeyboardEvent as ReactKeyboardEvent,PointerEvent as ReactPointerEvent} from 'react';
-import type {SiteContent,Section} from './model';
+import type {ButtonStyle,Link,SiteContent,Section} from './model';
 import {blankSite,starterSite,screenshotSection,extraSections,clone} from './model';
 import type {Project} from '../portfolioData';
 import {PortfolioChrome} from '../components/PortfolioChrome';
@@ -33,7 +33,8 @@ const cloneEmpty=(value:Value):Value=>
  typeof value==='string'?'':typeof value==='number'?value:typeof value==='boolean'?value:
  Array.isArray(value)?[]:Object.fromEntries(Object.entries(value).map(([k,v])=>[k,cloneEmpty(v)]));
 function newArrayItem(name:string,values:Value[],sectionType:string):Value{
- if(name==='links'||name==='buttons')return {label:'New link',href:'#contact'};
+ if(name==='links')return {label:'New link',href:'#contact'};
+ if(name==='buttons')return {label:'New button',href:'#contact',variant:'outline'};
  if(name==='projects')return {...clone(starterSite.projects[0]),slug:'new-project-'+Date.now(),client:'New project'} as unknown as Value;
  if(name==='items'){
    if(sectionType==='gallery')return {image:'',caption:'New screenshot'};
@@ -46,31 +47,76 @@ function newArrayItem(name:string,values:Value[],sectionType:string):Value{
  return '';
 }
 function Field({
- value,onChange,name='Settings',sectionType='',onPickImage
-}:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage}){
+ value,onChange,name='Settings',sectionType='',onPickImage,anchorOptions=[]
+}:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage;
+  anchorOptions?:{label:string;id:string}[]}){
  if(typeof value==='boolean')return <label className="visual-check"><input type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/><span>{pretty(name)}</span></label>;
  if(typeof value==='number'){
-   const bounded=name==='padding'||name==='fontSize'||name==='contentWidth';
-   const min=name==='contentWidth'?320:name==='fontSize'?12:0;
-   const max=name==='contentWidth'?1600:name==='fontSize'?48:240;
-   return <label className="visual-field">{pretty(name)} {bounded&&<output>{value}{name==='contentWidth'||name==='padding'||name==='fontSize'?'px':''}</output>}
-     {bounded?<input type="range" min={min} max={max} step={name==='contentWidth'?10:1} value={value} onChange={e=>onChange(Number(e.target.value))}/>:
-     <input type="number" value={value} onChange={e=>onChange(Number(e.target.value)||0)}/>}</label>;
+   const sliders:Record<string,[number,number,number,string]>={
+     padding:[0,240,1,'px'],fontSize:[12,48,1,'px'],contentWidth:[320,1600,10,'px'],
+     lineHeight:[0,3,.05,'×'],letterSpacing:[-8,12,.25,'px'],
+     paragraphSpacing:[-1,90,1,'px'],bodyWeight:[0,900,100,''],
+     headingSize:[0,160,1,'px'],headingLineHeight:[0,3,.05,'×'],
+     headingLetterSpacing:[-12,12,.25,'px'],headingWeight:[0,900,100,''],
+     statValueSize:[0,110,1,'px'],statLabelSize:[0,50,1,'px'],
+     columns:[0,12,1,''],gap:[-1,160,1,'px'],
+     split:[20,80,1,'%'],copyMaxWidth:[0,1200,10,'px']
+   };
+   const slider=sliders[name];
+   if(slider){
+     const [min,max,step,unit]=slider;
+     const inherited=(name==='gap'||name==='paragraphSpacing')?value<0:
+       ['lineHeight','headingLineHeight','headingSize','bodyWeight','headingWeight',
+        'statValueSize','statLabelSize','columns','copyMaxWidth'].includes(name)&&value===0;
+     return <div className="visual-field"><label htmlFor={'cms-setting-'+name}>{pretty(name)}</label>
+       <div className="visual-number-line">
+         <input id={'cms-setting-'+name} aria-label={pretty(name)} type="range" min={min} max={max}
+           step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/>
+         <input type="number" aria-label={pretty(name)+' exact value'} min={min} max={max} step={step}
+           value={value} onChange={e=>{const n=Number(e.target.value);if(Number.isFinite(n))onChange(clamp(n,min,max));}}/>
+         <output>{inherited?'Auto':value+unit}</output>
+       </div>
+       {(name==='gap'||name==='paragraphSpacing')&&<small>−1 = inherit design spacing; 0 = no spacing.</small>}
+       {name==='columns'&&<small>0 = automatically divide available width between the items.</small>}
+       {name==='headingSize'&&<small>0 = inherit the current heading scale.</small>}
+     </div>;
+   }
+   return <label className="visual-field">{pretty(name)}
+     <input type="number" value={value} onChange={e=>onChange(Number(e.target.value)||0)}/></label>;
  }
  if(typeof value==='string'){
    if(name==='id'||name==='type')return <p className="visual-readonly">{pretty(name)}: <code>{value}</code></p>;
    const options=name==='font'?['sans','serif','mono']:
      name==='align'?['left','center','right']:
-     name==='imageSide'?['left','right']:null;
+     name==='imageSide'?['left','right']:
+     name==='verticalAlign'?['start','center','end']:
+     name==='alignment'?['left','center','right']:
+     name==='variant'?['primary','outline','text']:null;
    if(options)return <label className="visual-field">{pretty(name)}<select value={value} onChange={e=>onChange(e.target.value)}>
      {options.map(o=><option key={o} value={o}>{pretty(o)}</option>)}
    </select></label>;
+   if(name==='href')return <div className="visual-field visual-link-field">
+     <label>Link destination</label>
+     <select aria-label="Choose section to scroll to"
+       value={anchorOptions.some(a=>(sectionType?'#':'/#')+a.id===value)?value:'custom'}
+       onChange={e=>{if(e.target.value!=='custom')onChange(e.target.value);}}>
+       <option value="custom">External URL, email or custom path</option>
+       {anchorOptions.map(a=><option key={a.id} value={(sectionType?'#':'/#')+a.id}>
+         Scroll to {a.label} ({(sectionType?'#':'/#')+a.id})
+       </option>)}
+     </select>
+     <input aria-label="Link URL" value={value} onChange={e=>onChange(e.target.value)}
+       placeholder="#contact or https://example.com"/>
+     <small>Links starting with # scroll to that section when the site is published.</small>
+   </div>;
    if(name==='image')return <div className="visual-field visual-image-field"><strong>Image</strong>
      {value?<img src={value} alt="Selected portfolio media" loading="lazy"/>:<div className="visual-image-empty">No image selected</div>}
      <div className="visual-button-row"><button type="button" onClick={()=>onPickImage(url=>onChange(url))}>{value?'Change image':'Choose image'}</button>
        {value&&<button type="button" onClick={()=>onChange('')}>Remove</button>}</div>
    </div>;
-   const isColor=['background','text','muted','accent','panel'].includes(name)
+   const isColor=['background','text','muted','accent','panel','headingColor','bodyColor',
+     'eyebrowColor','emphasisColor','mutedColor','primaryBackground','primaryText',
+     'secondaryBackground','secondaryText','borderColor'].includes(name)
      &&(value===''||/^#[0-9a-fA-F]{6}$/.test(value));
    if(isColor)return <label className="visual-field">{pretty(name)}
      <div className="visual-colour-row"><input type="color" aria-label={pretty(name)+' colour'} value={/^#[0-9a-fA-F]{6}$/.test(value)?value:'#ffffff'} onChange={e=>onChange(e.target.value)}/>
@@ -91,13 +137,15 @@ function Field({
         <button type="button" disabled={i===value.length-1} onClick={()=>{const next=[...value];[next[i],next[i+1]]=[next[i+1],next[i]];onChange(next);}}>↓</button>
         <button type="button" onClick={()=>onChange(value.filter((_,j)=>j!==i))}>×</button>
        </div></div>
-       <Field value={item} name={typeof item==='object'?'Details':pretty(name)+' '+(i+1)} onChange={v=>onChange(value.map((x,j)=>j===i?v:x))} sectionType={sectionType} onPickImage={onPickImage}/>
+       <Field value={item} name={typeof item==='object'?'Details':pretty(name)+' '+(i+1)} onChange={v=>onChange(value.map((x,j)=>j===i?v:x))} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions}/>
      </div>)}
      <button type="button" className="visual-add-mini" onClick={()=>onChange([...value,newArrayItem(name,value,sectionType)])}>+ Add {name==='items'?'item':name==='links'?'link':'entry'}</button>
    </fieldset>;
  }
+ const fields=(name==='Details'&&sectionType&&'href' in value)
+   ?{...value,variant:value.variant||'primary'}:value;
  return <fieldset className="visual-fieldset"><legend>{pretty(name)}</legend>
-  {Object.entries(value).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
+  {Object.entries(fields).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
  </fieldset>;
 }
 
@@ -271,6 +319,32 @@ export function CmsEditor({csrf}:{csrf:string}){
    edit({...draft,sections:draft.sections.map((s,i)=>i===index?next:s)});
    if(next.id!==selected)setSelected(next.id);
  }
+ function changeAnchor(section:Section,newAnchor:string){
+   if(!draft)return;
+   const anchor=newAnchor.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-+/,'').slice(0,80);
+   if(!anchor||!/^([a-z][a-z0-9-]*)$/.test(anchor)||['main','top'].includes(anchor)){
+     setError('Anchor must begin with a letter and contain only lowercase letters, numbers or hyphens.');
+     return;
+   }
+   if(draft.sections.some(s=>s.id!==section.id&&(s.anchor||s.id)===anchor)){
+     setError('Another section already uses #'+anchor+'. Choose a unique anchor.');
+     return;
+   }
+   const previous=section.anchor||section.id;
+   const retarget=(link:Link):Link=>
+     link.href==='#'+previous?{...link,href:'#'+anchor}:
+     link.href==='/#'+previous?{...link,href:'/#'+anchor}:link;
+   const sections=draft.sections.map(s=>({
+     ...s,
+     ...(s.id===section.id?{anchor}:{}),
+     ...(s.buttons?{buttons:s.buttons.map(retarget)}:{})
+   }));
+   edit({...draft,sections,
+     header:{...draft.header,links:draft.header.links.map(retarget)},
+     footer:{...draft.footer,links:draft.footer.links.map(retarget)}
+   });
+   setMessage('Section address is #'+anchor+'. Existing matching links were updated.');
+ }
  function moveSection(from:number,to:number){
    if(!draft||from===to||from<0||to<0)return;
    const array=[...draft.sections];const [item]=array.splice(from,1);array.splice(to,0,item);
@@ -295,6 +369,9 @@ export function CmsEditor({csrf}:{csrf:string}){
    project.image='';project.note='';
    edit({...draft,projects:[...draft.projects,project]});select('project:'+project.slug,'projects');
  }
+ const anchorOptions=(draft?.sections||[]).filter(s=>s.enabled).map(s=>({
+   id:s.anchor||s.id,label:s.heading||s.eyebrow||sectionNames[s.type]||s.type
+ }));
  const section=draft?.sections.find(x=>x.id===selected);
  const project=draft?.projects.find(x=>selected==='project:'+x.slug);
  const projectForPreview=draft?.projects.find(x=>x.slug===(project?.slug||draft?.projects[0]?.slug));
@@ -507,8 +584,8 @@ export function CmsEditor({csrf}:{csrf:string}){
           <button className="visual-upload-button" onClick={()=>openMedia()}>Open image library / upload</button>
           <p>{images.length} images in your library.</p>
         </>:selected==='metadata'?<>
-          <Field name="Page title" value={draft.title} onChange={v=>edit({...draft,title:v as string})} onPickImage={pickImage}/>
-          <Field name="Description" value={draft.description} onChange={v=>edit({...draft,description:v as string})} onPickImage={pickImage}/>
+          <Field name="Page title" value={draft.title} onChange={v=>edit({...draft,title:v as string})} onPickImage={pickImage} anchorOptions={anchorOptions}/>
+          <Field name="Description" value={draft.description} onChange={v=>edit({...draft,description:v as string})} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='theme'||selected==='header'||selected==='footer'?<>
           {selected==='theme'&&<div className="visual-presets"><strong>Colour presets</strong>
             {[
@@ -517,7 +594,7 @@ export function CmsEditor({csrf}:{csrf:string}){
               {name:'Dark',background:'#151e1d',text:'#ecf2ef',muted:'#a9b7b0',accent:'#66cf9e',panel:'#22302c'}
             ].map(preset=><button type="button" key={preset.name} onClick={()=>edit({...draft,theme:{...draft.theme,...preset}})}>{preset.name}</button>)}
           </div>}
-          <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage}/>
+          <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='projects'?<>
           <h3>Case studies</h3><p>Select a project on the left or click Add case study to create a new draft page.</p>
           <button onClick={addProject}>+ Add case study</button>
@@ -527,14 +604,83 @@ export function CmsEditor({csrf}:{csrf:string}){
             <button type="button" onClick={()=>duplicateSection(draft.sections.indexOf(section))}>Duplicate</button>
             <button type="button" onClick={()=>removeSection(draft.sections.indexOf(section))}>Delete</button>
           </div>
-          <Field value={{...section,image:section.image||''} as unknown as Value} name={sectionNames[section.type]||section.type}
-            sectionType={section.type} onPickImage={pickImage} onChange={v=>updateSection(v as unknown as Section)}/>
-        </>:project&&selectedProject?<>
+          <div className="visual-anchor-controls">
+            <label htmlFor="cms-section-anchor">Section anchor for links</label>
+            <div className="visual-anchor-input"><span>#</span>
+              <input id="cms-section-anchor" value={section.anchor||section.id}
+                aria-label="Section anchor" onChange={e=>changeAnchor(section,e.target.value)}/>
+            </div>
+            <small>Use #{section.anchor||section.id} in buttons and navigation. Existing links update when this changes.</small>
+          </div>
+          <Field value={{...Object.fromEntries(Object.entries(section).filter(([key])=>!['layout','anchor','buttonStyle'].includes(key))),
+             image:section.image||'',
+             style:{
+               background:section.style.background,text:section.style.text,accent:section.style.accent,
+               padding:section.style.padding,fontSize:section.style.fontSize,align:section.style.align
+             }} as Value}
+             name={sectionNames[section.type]||section.type} sectionType={section.type}
+             onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>{const next=v as unknown as Section;
+               updateSection({...section,...next,style:{...section.style,...next.style}});
+             }}/>
+           <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
+          <Field name="Individual text colours" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+            value={{
+              headingColor:section.style.headingColor||'',
+              bodyColor:section.style.bodyColor||'',
+              eyebrowColor:section.style.eyebrowColor||'',
+              emphasisColor:section.style.emphasisColor||'',
+              mutedColor:section.style.mutedColor||''
+            } as Value}
+            onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
+          {!!section.buttons?.length&&<Field name="Button styles" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+            value={{
+              alignment:section.buttonStyle?.alignment||'right',
+              radius:section.buttonStyle?.radius??5,
+              paddingX:section.buttonStyle?.paddingX??19,
+              paddingY:section.buttonStyle?.paddingY??15,
+              gap:section.buttonStyle?.gap??26,
+              primaryBackground:section.buttonStyle?.primaryBackground||'',
+              primaryText:section.buttonStyle?.primaryText||'',
+              secondaryBackground:section.buttonStyle?.secondaryBackground||'',
+              secondaryText:section.buttonStyle?.secondaryText||'',
+              borderColor:section.buttonStyle?.borderColor||''
+            } as Value}
+            onChange={v=>updateSection({...section,buttonStyle:{...section.buttonStyle,...(v as ButtonStyle)}})}/>}
+          <p className="visual-inspector-help">Typography controls update the live preview and published site. Zero inherits the original design unless indicated.</p>
+           <Field name="Typography & text spacing" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+             value={{
+               lineHeight:section.style.lineHeight??0,
+               letterSpacing:section.style.letterSpacing??0,
+               paragraphSpacing:section.style.paragraphSpacing??-1,
+               bodyWeight:section.style.bodyWeight??0,
+               headingSize:section.style.headingSize??0,
+               headingLineHeight:section.style.headingLineHeight??0,
+               headingLetterSpacing:section.style.headingLetterSpacing??0,
+               headingWeight:section.style.headingWeight??0,
+               ...(section.type==='stats'?{
+                 statValueSize:section.style.statValueSize??0,
+                 statLabelSize:section.style.statLabelSize??0
+               }:{})
+             } as Value}
+             onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
+           <Field name="Layout & spacing" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
+             value={{
+               ...(['stats','projects','expertise','about','gallery'].includes(section.type)
+                 ?{columns:section.layout?.columns??0}:{}),
+               gap:section.layout?.gap??-1,
+               ...(['about','image_text','projects','expertise'].includes(section.type)
+                 ?{split:section.layout?.split??50}:{}),
+               ...(['about','image_text','cta','projects','expertise'].includes(section.type)
+                 ?{verticalAlign:section.layout?.verticalAlign??'start'}:{}),
+               ...(section.type==='about'?{copyMaxWidth:section.layout?.copyMaxWidth??0}:{})
+             } as Value}
+             onChange={v=>updateSection({...section,layout:{...section.layout,...(v as object)}})}/>
+         </>:project&&selectedProject?<>
           <div className="visual-inspector-section-actions">
              <button type="button" onClick={()=>{if(window.confirm('Remove this case study from your draft?')){edit({...draft,projects:draft.projects.filter(p=>p.slug!==project.slug)});setSelected('projects');}}}>Delete case study</button>
           </div>
           <Field name="Case study" value={{...project,image:project.image||''} as unknown as Value}
-            sectionType="project" onPickImage={pickImage} onChange={v=>updateProject(v as unknown as Project)}/>
+            sectionType="project" onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>updateProject(v as unknown as Project)}/>
         </>:<p>Select a section in the preview or the left panel to start editing.</p>}
         </div>
       </aside>
