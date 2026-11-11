@@ -346,9 +346,10 @@ def remotive_jobs():
     return results
 
 
-def scan(store):
+def scan(store, run_id=None):
     # Claims across workers and scheduled SSM invocations use a transactional lock.
-    run_id = store.begin()
+    if run_id is None:
+        run_id = store.begin()
     errors = []
     sources_ok = 0
     matched = {}
