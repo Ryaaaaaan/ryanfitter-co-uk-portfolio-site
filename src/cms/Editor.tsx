@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import type {CSSProperties,KeyboardEvent as ReactKeyboardEvent} from 'react';
+import type {CSSProperties,KeyboardEvent as ReactKeyboardEvent,PointerEvent as ReactPointerEvent} from 'react';
 import type {SiteContent,Section} from './model';
 import {blankSite,starterSite,screenshotSection,extraSections,clone} from './model';
 import type {Project} from '../portfolioData';
@@ -11,7 +11,11 @@ import './editor.css';
 type Value=string|number|boolean|Value[]|{[key:string]:Value};
 type Snapshot={draft:SiteContent;revision:number;publishedRevision:number};
 type UploadedImage={filename:string;url:string;size:number};
-type Viewport='desktop'|'tablet'|'mobile';
+type Viewport='desktop'|'laptop'|'tablet'|'phone'|'custom';
+const previewPresets:Record<Exclude<Viewport,'custom'>,number>={
+  desktop:1440,laptop:1280,tablet:768,phone:390
+};
+const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
 type Page='home'|'projects';
 type PickImage=(onSelect:(url:string)=>void)=>void;
 const pretty=(v:string)=>v.replace(/_/g,' ').replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase());
@@ -104,6 +108,12 @@ export function CmsEditor({csrf}:{csrf:string}){
  const [message,setMessage]=useState(''),[error,setError]=useState('');
  const [selected,setSelected]=useState('sections'),[page,setPage]=useState<Page>('home');
  const [viewport,setViewport]=useState<Viewport>('desktop'),[focus,setFocus]=useState(false);
+ const [customWidth,setCustomWidth]=useState(1100),[fitToStage,setFitToStage]=useState(true);
+ const [showRail,setShowRail]=useState(true),[showInspector,setShowInspector]=useState(true);
+ const [railWidth,setRailWidth]=useState(198),[inspectorWidth,setInspectorWidth]=useState(288);
+ const studioRef=useRef<HTMLDivElement>(null);
+ const splitter=useRef<{side:'rail'|'inspector';pointerId:number;x:number;width:number}|null>(null);
+ const frameResizer=useRef<{pointerId:number;x:number;width:number;zoom:number}|null>(null);
  const [images,setImages]=useState<UploadedImage[]>([]),[mediaOpen,setMediaOpen]=useState(false);
  const [picker,setPicker]=useState<((url:string)=>void)|null>(null);
  const [railOpen,setRailOpen]=useState(false),[inspectorOpen,setInspectorOpen]=useState(false);
@@ -116,7 +126,59 @@ export function CmsEditor({csrf}:{csrf:string}){
    const observer=new ResizeObserver(entries=>setStageWidth(entries[0].contentRect.width));
    observer.observe(el);setStageWidth(el.clientWidth);
    return ()=>observer.disconnect();
- },[draft!==null,focus]);
+ },[draft!==null,focus,showRail,showInspector]);
+ function setPreviewWidth(next:number){
+   setCustomWidth(clamp(Math.round(next),320,1920));setViewport('custom');
+ }
+ function startSplitter(event:ReactPointerEvent<HTMLDivElement>,side:'rail'|'inspector'){
+   if(event.button!==0)return;
+   event.preventDefault();
+   splitter.current={side,pointerId:event.pointerId,x:event.clientX,
+     width:side==='rail'?railWidth:inspectorWidth};
+   event.currentTarget.setPointerCapture(event.pointerId);
+ }
+ function moveSplitter(event:ReactPointerEvent<HTMLDivElement>){
+   const drag=splitter.current;
+   if(!drag||drag.pointerId!==event.pointerId)return;
+   const width=studioRef.current?.clientWidth||1300;
+   const minimumStage=400;
+   const other=drag.side==='rail'?(showInspector?inspectorWidth:0):(showRail?railWidth:0);
+   const maximum=Math.max(160,Math.min(drag.side==='rail'?330:430,width-other-minimumStage-12));
+   const delta=(event.clientX-drag.x)*(drag.side==='rail'?1:-1);
+   if(drag.side==='rail')setRailWidth(clamp(drag.width+delta,150,maximum));
+   else setInspectorWidth(clamp(drag.width+delta,225,Math.max(225,maximum)));
+ }
+ function finishSplitter(event:ReactPointerEvent<HTMLDivElement>){
+   if(splitter.current?.pointerId!==event.pointerId)return;
+   splitter.current=null;
+   if(event.currentTarget.hasPointerCapture(event.pointerId))
+     event.currentTarget.releasePointerCapture(event.pointerId);
+ }
+ function resizeWithKey(event:ReactKeyboardEvent<HTMLDivElement>,side:'rail'|'inspector'){
+   if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
+   event.preventDefault();
+   const direction=(event.key==='ArrowRight'?1:-1)*(side==='rail'?1:-1);
+   if(side==='rail')setRailWidth(current=>clamp(current+direction*18,150,330));
+   else setInspectorWidth(current=>clamp(current+direction*18,225,430));
+ }
+ function startFrameResize(event:ReactPointerEvent<HTMLDivElement>,width:number,zoom:number){
+   if(event.button!==0)return;
+   event.preventDefault();event.stopPropagation();
+   frameResizer.current={pointerId:event.pointerId,x:event.clientX,width,zoom};
+   event.currentTarget.setPointerCapture(event.pointerId);
+ }
+ function moveFrameResize(event:ReactPointerEvent<HTMLDivElement>){
+   const drag=frameResizer.current;
+   if(!drag||drag.pointerId!==event.pointerId)return;
+   // The frame is centred; moving its right edge expands both sides.
+   setPreviewWidth(drag.width+2*(event.clientX-drag.x)/drag.zoom);
+ }
+ function finishFrameResize(event:ReactPointerEvent<HTMLDivElement>){
+   if(frameResizer.current?.pointerId!==event.pointerId)return;
+   frameResizer.current=null;
+   if(event.currentTarget.hasPointerCapture(event.pointerId))
+     event.currentTarget.releasePointerCapture(event.pointerId);
+ }
 
  async function loadMedia(){
    try{
@@ -155,7 +217,7 @@ export function CmsEditor({csrf}:{csrf:string}){
   window.addEventListener('beforeunload',guard);return ()=>window.removeEventListener('beforeunload',guard);},[dirty]);
  function edit(next:SiteContent){setDraft(next);setDirty(true);setError('');setMessage('');}
  function select(next:string,whichPage=page){
-   setPage(whichPage);setSelected(next);setInspectorOpen(true);setRailOpen(false);
+   setPage(whichPage);setSelected(next);setInspectorOpen(true);setRailOpen(false);setShowInspector(true);
  }
  function useTemplate(template:SiteContent){
    if(!draft)return;
@@ -244,12 +306,16 @@ export function CmsEditor({csrf}:{csrf:string}){
  }
  const pickImage:PickImage=onSelect=>openMedia(onSelect);
  const selectedProject=selected.startsWith('project:');
- const settings=['sections','theme','header','footer','metadata','projects','media'];
  const selectedTitle=section?sectionNames[section.type]||pretty(section.type):project?project.client:pretty(selected);
  const statusText=busy?'Working…':dirty?'Unsaved draft changes':revision===published?'All changes published':'Saved draft awaiting publication';
- const designWidth=viewport==='desktop'?1140:viewport==='tablet'?768:390;
- const previewZoom=Math.min(1,Math.max(.33,(stageWidth-68)/designWidth));
+ const designWidth=viewport==='custom'?customWidth:previewPresets[viewport];
+ const previewZoom=fitToStage?Math.min(1,Math.max(.25,(stageWidth-46)/designWidth)):1;
  const frameStyle={'--cms-live-width':designWidth+'px',zoom:previewZoom} as CSSProperties;
+ const previewLayout=designWidth<=540?'mobile':designWidth<=900?'tablet':'desktop';
+ const studioStyle={'--vc-rail-width':(showRail?railWidth:0)+'px',
+   '--vc-inspector-width':(showInspector?inspectorWidth:0)+'px',
+   '--vc-left-grip':(showRail?8:0)+'px',
+   '--vc-right-grip':(showInspector?8:0)+'px'} as CSSProperties;
 
  function inspect(key:string){select(key);}
  function onCanvasKey(e:ReactKeyboardEvent<HTMLDivElement>,id:string){
@@ -257,10 +323,19 @@ export function CmsEditor({csrf}:{csrf:string}){
  }
  return <section className="cms-editor visual-cms">
    <header className="visual-cms-header">
+     <details className="visual-workspace-menu">
+       <summary aria-label="Open workspace navigation">☰ <span>Workspace</span></summary>
+       <nav aria-label="Workspace navigation">
+         <a href="/admin">Overview</a>
+         <a href="/admin/job-matches">Job matches</a>
+         <a href="/admin/jobs">Applications</a>
+         <a href="/admin/interviews">Interview calendar</a>
+         <a href="/admin/cvs">My CVs</a>
+         <a href="/admin/cms" aria-current="page">Portfolio CMS</a>
+       </nav>
+     </details>
      <div className="visual-cms-title">
-       <span className="visual-cms-kicker">PORTFOLIO BUILDER / LIVE DRAFT</span>
-       <h2>Website CMS</h2>
-       <p>Click a section in the preview to edit it. Your public site stays unchanged until you publish.</p>
+       <h2>Portfolio builder <span>Live draft</span></h2>
      </div>
      <div className="visual-cms-toolbar">
        <span className={'visual-cms-state'+(dirty?' is-dirty':'')}>{statusText}</span>
@@ -270,8 +345,8 @@ export function CmsEditor({csrf}:{csrf:string}){
      </div>
    </header>
    {error&&<div className="visual-cms-error" role="alert">{error} <button onClick={()=>{if(!dirty||window.confirm('Discard unsaved edits?'))void load();}}>Reload draft</button></div>}
-   {message&&<div className="visual-cms-message" role="status">{message} {undoSite&&<button onClick={undoTemplate}>Undo template change</button>}</div>}
-   {draft?<div className={'visual-cms-studio'+(focus?' visual-cms-focus':'')+(railOpen?' rail-open':'')+(inspectorOpen?' inspector-open':'')}>
+   {message&&<div className="visual-cms-message" role="status">{message} {undoSite&&<button type="button" onClick={undoTemplate}>Undo</button>}<button type="button" aria-label="Dismiss message" onClick={()=>setMessage('')}>×</button></div>}
+   {draft?<div ref={studioRef} style={studioStyle} className={'visual-cms-studio'+(focus?' visual-cms-focus':'')+(railOpen?' rail-open':'')+(inspectorOpen?' inspector-open':'')+(!showRail?' visual-rail-hidden':'')+(!showInspector?' visual-inspector-hidden':'')}>
       <aside className="visual-cms-rail" aria-label="Portfolio content sections">
         <div className="visual-rail-head"><strong>Pages & sections</strong><button type="button" className="visual-close-panel" onClick={()=>setRailOpen(false)}>Close</button></div>
         <label className="visual-rail-page">Editing page
@@ -312,15 +387,32 @@ export function CmsEditor({csrf}:{csrf:string}){
           </button>)}
         </div>
       </aside>
+      <div role="separator" aria-label="Resize sections panel" aria-orientation="vertical"
+        aria-valuemin={150} aria-valuemax={330} aria-valuenow={railWidth} tabIndex={0}
+        className="visual-panel-resizer visual-resizer-left" onPointerDown={e=>startSplitter(e,'rail')}
+        onPointerMove={moveSplitter} onPointerUp={finishSplitter} onPointerCancel={finishSplitter}
+        onKeyDown={e=>resizeWithKey(e,'rail')} title="Drag to resize sections panel, or use arrow keys">
+        <span/>
+      </div>
       <div className="visual-cms-stage">
         <div className="visual-stage-bar">
           <button type="button" className="visual-mobile-rail" onClick={()=>setRailOpen(!railOpen)}>☰ Sections</button>
-          <div className="visual-stage-label"><strong>ryanfitter.co.uk</strong><span>Live draft preview · {page==='home'?'Home':'Case study'}</span></div>
+          <button type="button" className="visual-stage-panel-toggle visual-desktop-rail"
+            aria-pressed={showRail} onClick={()=>setShowRail(value=>!value)}>
+            {showRail?'◀ Sections':'☰ Sections'}
+          </button>
+          <div className="visual-stage-label"><strong>ryanfitter.co.uk</strong><span>{page==='home'?'Home':'Case study'} · {designWidth}px wide</span></div>
           <div className="visual-stage-actions">
-           <div className="visual-viewports" aria-label="Preview width">
-             {(['desktop','tablet','mobile'] as const).map(v=><button type="button" key={v} aria-pressed={viewport===v} onClick={()=>setViewport(v)}>{pretty(v)}</button>)}
+           <div className="visual-viewports" role="group" aria-label="Preview device width">
+             {(['desktop','laptop','tablet','phone'] as const).map(v=><button type="button"
+               key={v} aria-pressed={viewport===v} title={pretty(v)+' — '+previewPresets[v]+'px'}
+               onClick={()=>setViewport(v)}>{pretty(v)}</button>)}
            </div>
-           <button type="button" onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Expand'}</button>
+           <button type="button" className="visual-stage-panel-toggle visual-desktop-inspector"
+             aria-pressed={showInspector} onClick={()=>setShowInspector(value=>!value)}>
+             {showInspector?'Inspector ▶':'◧ Inspector'}
+           </button>
+           <button type="button" className="visual-focus-button" onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Preview only'}</button>
            <button type="button" className="visual-mobile-inspector" onClick={()=>setInspectorOpen(!inspectorOpen)}>Edit</button>
           </div>
         </div>
@@ -331,7 +423,7 @@ export function CmsEditor({csrf}:{csrf:string}){
             <div><button type="button" onClick={()=>useTemplate(starterSite)}><b>Professional portfolio</b><small>Hero, case studies, expertise, about, contact</small></button>
               <button type="button" onClick={()=>useTemplate(blankSite)}><b>Blank slate</b><small>One simple introduction</small></button></div>
           </div>}
-          <div className={'visual-page-frame '+viewport} style={frameStyle}
+          <div className={'visual-page-frame '+previewLayout} style={frameStyle}
             onClickCapture={e=>{const target=e.target as HTMLElement;
               if(target.closest('a,button'))e.preventDefault();
               if(target.closest('.portfolio-header'))select('header',page);
@@ -350,9 +442,43 @@ export function CmsEditor({csrf}:{csrf:string}){
                 <ProjectDetail project={projectForPreview} projects={draft.projects}/>
               </div>:<div className="visual-empty-page">No case studies yet. Add one from the left rail.</div>}
             </PortfolioChrome>
+            <div className="visual-frame-resize-handle" role="separator" tabIndex={0}
+              aria-label="Resize preview width" aria-orientation="vertical"
+              aria-valuemin={320} aria-valuemax={1920} aria-valuenow={designWidth}
+              title="Drag to resize the preview, or use arrow keys"
+              onPointerDown={e=>startFrameResize(e,designWidth,previewZoom)}
+              onPointerMove={moveFrameResize} onPointerUp={finishFrameResize} onPointerCancel={finishFrameResize}
+              onKeyDown={e=>{
+                if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+                  e.preventDefault();setPreviewWidth(designWidth+(e.key==='ArrowRight'?20:-20));
+                }
+              }}><span>⋮</span></div>
           </div>
         </div>
-        <div className="visual-stage-footer"><span>Draft preview updates on every edit</span><span>Desktop · tablet · mobile</span></div>
+        <div className="visual-stage-footer">
+          <div className="visual-preview-size">
+            <label htmlFor="preview-width">Preview width</label>
+            <input id="preview-width" type="range" min="320" max="1920" step="10"
+              value={designWidth} aria-label="Preview width in pixels"
+              onChange={e=>setPreviewWidth(Number(e.target.value))}/>
+            <input type="number" aria-label="Preview width pixels" min="320" max="1920"
+              value={designWidth} onChange={e=>setPreviewWidth(Number(e.target.value))}/>
+            <span>px</span>
+          </div>
+          <div className="visual-preview-zoom">
+            <button type="button" aria-pressed={fitToStage} onClick={()=>setFitToStage(value=>!value)}>
+              {fitToStage?'Fit preview':'100% size'}
+            </button>
+            <span>{Math.round(previewZoom*100)}% zoom</span>
+          </div>
+        </div>
+      </div>
+      <div role="separator" aria-label="Resize editor inspector" aria-orientation="vertical"
+        aria-valuemin={225} aria-valuemax={430} aria-valuenow={inspectorWidth} tabIndex={0}
+        className="visual-panel-resizer visual-resizer-right" onPointerDown={e=>startSplitter(e,'inspector')}
+        onPointerMove={moveSplitter} onPointerUp={finishSplitter} onPointerCancel={finishSplitter}
+        onKeyDown={e=>resizeWithKey(e,'inspector')} title="Drag to resize inspector, or use arrow keys">
+        <span/>
       </div>
       <aside className="visual-cms-inspector" aria-label="Selected section settings">
         <div className="visual-inspector-head"><div><small>INSPECTOR</small><strong>{selectedTitle}</strong></div><button type="button" className="visual-close-panel" onClick={()=>setInspectorOpen(false)}>Close</button></div>

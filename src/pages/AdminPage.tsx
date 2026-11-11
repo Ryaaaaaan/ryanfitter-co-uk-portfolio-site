@@ -61,7 +61,7 @@ export function AdminPage(){
   const matches=window.location.pathname.replace(/\/+$/, "")==="/admin/job-matches";
   const cvs=window.location.pathname.replace(/\/+$/, "")==="/admin/cvs";
   const calendar=window.location.pathname.replace(/\/+$/, "")==="/admin/interviews";
-  return <div className="admin-app">
+  return <div className={"admin-app"+(cms?" admin-app-cms":"")}>
     {status==="ready"&&identity?<>
       <aside className="admin-sidebar">
         <a href="/" className="admin-brand">ryan<span>.</span>fitter <small>WORKSPACE</small></a>

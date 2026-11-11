@@ -61,3 +61,25 @@ jobs:
       - name: Synthesise CloudFormation without AWS credentials
         working-directory: infrastructure
         run: npx --yes aws-cdk@2 synth RyanFitterPersonalDashboard --app "python3 app.py" --output /tmp/ryanfitter-cdk-out
+
+  cms-visual-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install frontend and browser test tools
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --no-package-lock --no-audit --no-fund playwright
+      - name: Install lightweight headless Chromium
+        run: npx playwright install chromium --only-shell
+      - name: Exercise real CMS controls and responsive stage
+        run: |
+          npm run dev -- --host 127.0.0.1 > /tmp/ryanfitter-vite.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/admin/cms -o /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/cms-visual-smoke.mjs

@@ -50,3 +50,13 @@
 .admin-main-cms>.admin-heading{display:none}
 .admin-main-cms .visual-cms{width:100%}
 @media(max-width:760px){.admin-main-cms{padding:0 0 12px!important}}
+
+/* CMS is an immersive editing surface. Workspace links are in the builder's
+   single compact dropdown rather than a permanently duplicated 265px rail. */
+.admin-app-cms .admin-sidebar{display:none}
+.admin-app-cms .admin-main-cms{margin-left:0;padding:0!important;min-height:100dvh}
+.admin-app-cms .admin-main-cms .visual-cms{width:100%;min-height:100dvh}
+@media(max-width:760px){
+ .admin-app-cms .admin-sidebar{display:none}
+ .admin-app-cms .admin-main-cms{padding:0!important}
+}
