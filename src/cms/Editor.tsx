@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import type {CSSProperties,KeyboardEvent as ReactKeyboardEvent,PointerEvent as ReactPointerEvent} from 'react';
-import type {ButtonStyle,SiteContent,Section} from './model';
+import type {ButtonStyle,Link,SiteContent,Section} from './model';
 import {blankSite,starterSite,screenshotSection,extraSections,clone} from './model';
 import type {Project} from '../portfolioData';
 import {PortfolioChrome} from '../components/PortfolioChrome';
@@ -140,8 +140,10 @@ function Field({
      <button type="button" className="visual-add-mini" onClick={()=>onChange([...value,newArrayItem(name,value,sectionType)])}>+ Add {name==='items'?'item':name==='links'?'link':'entry'}</button>
    </fieldset>;
  }
+ const fields=(name==='Details'&&sectionType&&'href' in value)
+   ?{...value,variant:value.variant||'primary'}:value;
  return <fieldset className="visual-fieldset"><legend>{pretty(name)}</legend>
-  {Object.entries(value).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
+  {Object.entries(fields).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
  </fieldset>;
 }
 
@@ -315,6 +317,30 @@ export function CmsEditor({csrf}:{csrf:string}){
    edit({...draft,sections:draft.sections.map((s,i)=>i===index?next:s)});
    if(next.id!==selected)setSelected(next.id);
  }
+ function changeAnchor(section:Section,newAnchor:string){
+   if(!draft)return;
+   const anchor=newAnchor.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-').replace(/^-+/,'').slice(0,80);
+   if(!anchor||!/^([a-z][a-z0-9-]*)$/.test(anchor)||['main','top'].includes(anchor)){
+     setError('Anchor must begin with a letter and contain only lowercase letters, numbers or hyphens.');
+     return;
+   }
+   if(draft.sections.some(s=>s.id!==section.id&&(s.anchor||s.id)===anchor)){
+     setError('Another section already uses #'+anchor+'. Choose a unique anchor.');
+     return;
+   }
+   const previous=section.anchor||section.id;
+   const retarget=(link:Link):Link=>link.href==='#'+previous?{...link,href:'#'+anchor}:link;
+   const sections=draft.sections.map(s=>({
+     ...s,
+     ...(s.id===section.id?{anchor}:{}),
+     ...(s.buttons?{buttons:s.buttons.map(retarget)}:{})
+   }));
+   edit({...draft,sections,
+     header:{...draft.header,links:draft.header.links.map(retarget)},
+     footer:{...draft.footer,links:draft.footer.links.map(retarget)}
+   });
+   setMessage('Section address is #'+anchor+'. Existing matching links were updated.');
+ }
  function moveSection(from:number,to:number){
    if(!draft||from===to||from<0||to<0)return;
    const array=[...draft.sections];const [item]=array.splice(from,1);array.splice(to,0,item);
@@ -339,6 +365,9 @@ export function CmsEditor({csrf}:{csrf:string}){
    project.image='';project.note='';
    edit({...draft,projects:[...draft.projects,project]});select('project:'+project.slug,'projects');
  }
+ const anchorOptions=(draft?.sections||[]).filter(s=>s.enabled).map(s=>({
+   id:s.anchor||s.id,label:s.heading||s.eyebrow||sectionNames[s.type]||s.type
+ }));
  const section=draft?.sections.find(x=>x.id===selected);
  const project=draft?.projects.find(x=>selected==='project:'+x.slug);
  const projectForPreview=draft?.projects.find(x=>x.slug===(project?.slug||draft?.projects[0]?.slug));
