@@ -42,7 +42,49 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("Merchandising", p["role_tags"])
         self.assertEqual(p["seniority"], "Managerial title")
         self.assertIn("unverified", p["remote_status"].lower())
-        self.assertEqual(p["profile_version"], 3)
+        self.assertEqual(p["profile_version"], 4)
+
+    def test_uk_listings_rank_ahead_of_worldwide_for_equivalent_cv_fit(self):
+        args = ("Ecommerce Merchandising Manager", "Shopify Akeneo SEO product data",
+                "Part-time", "20 hours/week")
+        uk = profile(*args, "UK remote", source="Himalayas")
+        worldwide = profile(*args, "Worldwide remote", source="Himalayas")
+        unknown = profile(*args, "Europe remote", source="Himalayas")
+        self.assertEqual(uk["uk_group"], "uk_listed")
+        self.assertEqual(worldwide["uk_group"], "worldwide")
+        self.assertEqual(unknown["uk_group"], "unverified")
+        self.assertEqual(uk["cv_score"], worldwide["cv_score"])
+        self.assertGreater(uk["score"], worldwide["score"])
+        self.assertLessEqual(worldwide["score"], 74)
+        self.assertLessEqual(unknown["score"], 78)
+        self.assertEqual(worldwide["geography_adjustment"], -10)
+        self.assertEqual(worldwide["source_adjustment"], -4)
+        self.assertIn("Himalayas source-priority adjustment",
+                      " ".join(worldwide["fit_evidence"]))
+
+    def test_source_penalty_is_small_and_does_not_assume_employer_country(self):
+        args = ("Digital Marketing Manager", "SEO PPC flexible working",
+                "Part-time", "20 hours/week", "UK remote")
+        reed = profile(*args, source="Reed")
+        himalayas = profile(*args, source="Himalayas")
+        self.assertEqual(reed["cv_score"], himalayas["cv_score"])
+        self.assertEqual(reed["lifestyle_score"], himalayas["lifestyle_score"])
+        self.assertEqual(reed["score"] - himalayas["score"], 4)
+        self.assertEqual(himalayas["uk_group"], "uk_listed")
+        self.assertNotIn("employer based", himalayas["uk_eligibility"])
+        self.assertEqual(reed["source_adjustment"], 0)
+
+    def test_uk_market_feeds_not_unfairly_downgraded_for_city_names(self):
+        reed = profile("SEO Specialist", "Remote search optimisation", "Part-time",
+                       "20 hours/week", "London", source="Reed")
+        adzuna = profile("SEO Specialist", "Remote search optimisation", "Part-time",
+                         "20 hours/week", "Lancashire", source="Adzuna")
+        other = profile("SEO Specialist", "Remote search optimisation", "Part-time",
+                        "20 hours/week", "Europe", source="Jobicy")
+        self.assertEqual(reed["uk_group"], "uk_listed")
+        self.assertEqual(adzuna["uk_group"], "uk_listed")
+        self.assertEqual(other["uk_group"], "unverified")
+        self.assertGreater(reed["score"], other["score"])
 
     def test_global_independent_contractors_are_not_overscored_as_uk_employment(self):
         global_contract = profile(
@@ -53,7 +95,7 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(global_contract["engagement_route"], "Independent contractor")
         self.assertTrue(global_contract["cross_border_review"])
         self.assertIn("Worldwide", global_contract["uk_eligibility"])
-        self.assertLessEqual(global_contract["score"], 74)
+        self.assertLessEqual(global_contract["score"], 70)
         self.assertLessEqual(global_contract["lifestyle_score"], 78)
         self.assertTrue(any("invoicing" in e for e in global_contract["fit_evidence"]))
         same_role_in_uk = profile(
