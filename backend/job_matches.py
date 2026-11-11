@@ -319,9 +319,26 @@ def himalayas_jobs():
                 salary = money + (f"{start:,.0f}–{end:,.0f}" if isinstance(start,(int,float)) and isinstance(end,(int,float))
                               else f"{start or end:,.0f}") + " / " + str(row.get("salaryPeriod") or "annual")
             desc = plain(row.get("description", ""))
-            caution = "Source labels this remote and UK-eligible; confirm the employer's actual work arrangement and weekly hours."
+            # Himalayas country=GB searches include worldwide jobs. GB listed as
+            # eligible does NOT say anything about the company's headquarters
+            # or employment/payroll arrangements.
+            if codes:
+                location = "UK-eligible remote (GB listed)"
+                caution = ("Himalayas includes Great Britain among applicant countries; "
+                           "confirm whether the company hires UK employees or contractors.")
+            else:
+                location = "Worldwide remote"
+                caution = ("Himalayas worldwide listing: UK applications may be accepted, "
+                           "but UK contract/payroll and local working hours are unverified.")
             if any(term in desc.lower() for term in ("travel required", "onsite", "on-site", "hybrid", "office attendance")):
-                caution = "Description mentions travel/office/hybrid; check for mandatory attendance before applying."
+                caution += " Description also mentions travel, office or hybrid attendance."
+            # Country eligibility and timezone eligibility are different.
+            zones = row.get("timezoneRestrictions") or []
+            if isinstance(zones, list) and zones:
+                zone_values = {str(z).strip().upper().replace("UTC", "").replace(":00", "")
+                               for z in zones if isinstance(z, (str, int, float))}
+                if not any(z in zone_values for z in ("0", "+0", "-0", "1", "+1")):
+                    caution += " Listed timezones may exclude UK working hours; confirm overlap."
             link = row.get("applicationLink")
             if not valid_link(link):
                 continue
@@ -329,7 +346,7 @@ def himalayas_jobs():
                 "title": row.get("title"), "company": row.get("companyName"),
                 "apply_url": link, "description": desc,
                 "source": "Himalayas", "hours": "", "employment_type": row.get("employmentType", ""),
-                "location": ("UK remote" if codes else "Worldwide remote"),
+                "location": location,
                 "confidence": "review", "warning": caution, "salary": salary,
                 "posted": posted.date().isoformat() if posted else "",
             })
