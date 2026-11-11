@@ -57,11 +57,48 @@ class MatchStoreTest(unittest.TestCase):
 
     def test_provider_failure_recorded_without_fabricated_jobs(self):
         with patch("backend.job_matches.himalayas_jobs", side_effect=ValueError("rate limited")), \
-             patch("backend.job_matches.remotive_jobs", return_value=[]):
+             patch("backend.job_matches.remotive_jobs", return_value=[]), \
+             patch("backend.job_matches.jobicy_jobs", return_value=[]):
             result = scan(self.store)
         self.assertEqual(result["status"], "partial")
         self.assertEqual(result["added"], 0)
         self.assertIn("Himalayas", result["errors"][0])
+
+    def test_weaker_but_relevant_roles_can_be_explored(self):
+        from backend.job_matches import score_match
+        score = score_match("Digital Marketing Manager", "Basic email campaigns", "Full-time", "", "review")
+        self.assertIsNotNone(score)
+        self.assertLess(score, 65)
+
+    def test_jobicy_public_feed_parsing(self):
+        from backend.job_matches import jobicy_jobs
+        class Reply:
+            def raise_for_status(self): pass
+            def json(self):
+                return {"jobs": [{
+                    "jobTitle": "Ecommerce Content Manager",
+                    "companyName": "Sample UK Remote Shop",
+                    "url": "https://jobicy.com/jobs/sample-uk-123",
+                    "jobGeo": "Europe",
+                    "jobType": ["Part-Time"],
+                    "jobDescription": "<p>Shopify SEO ecommerce merchandising</p>",
+                    "salaryMin": 20000, "salaryMax": 25000,
+                    "salaryCurrency": "GBP", "salaryPeriod": "yearly",
+                    "pubDate": "2026-11-11T09:00:00+00:00"
+                }, {
+                    "jobTitle": "Ecommerce Content Manager",
+                    "companyName": "US Restricted",
+                    "url": "https://jobicy.com/jobs/sample-us-123",
+                    "jobGeo": "USA",
+                    "jobType": ["Full-Time"],
+                    "jobDescription": "<p>Shopify</p>",
+                }]}
+        with patch("backend.job_matches.requests.get", return_value=Reply()):
+            rows = jobicy_jobs()
+        self.assertEqual(len(rows), 2)  # Europe result is duplicated across two geo requests
+        self.assertEqual(rows[0]["company"], "Sample UK Remote Shop")
+        self.assertEqual(rows[0]["source"], "Jobicy")
+        self.assertIn("£20,000", rows[0]["salary"])
 
     def test_remote_uk_country_filter(self):
         date_stamp = int(datetime.now(timezone.utc).timestamp())

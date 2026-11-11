@@ -33,6 +33,10 @@ done
 if [[ -d /var/lib/ryanfitter-admin/media ]]; then
   tar -czf "$BACKUP/media.tar.gz" -C /var/lib/ryanfitter-admin media
 fi
+# The CV vault also lives outside the deployment checkout and is backed up privately.
+if [[ -d /var/lib/ryanfitter-admin/cvs ]]; then
+  tar -czf "$BACKUP/cvs.tar.gz" -C /var/lib/ryanfitter-admin cvs
+fi
 rollback(){
   trap - ERR
   echo "Deployment failed; restoring runtime and routing from $BACKUP" >&2
@@ -78,6 +82,11 @@ CURL=(curl --resolve ryanfitter.co.uk:443:127.0.0.1 -sS)
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/jobs)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/job-matches)" == 302 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/job-matches)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/cvs)" == 302 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/interviews)" == 302 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/cvs)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/interviews)" == 401 ]]
+[[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/interviews/calendar.ics)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin/api/media)" == 401 ]]
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/content/media/missing.png)" == 404 ]]
 "${CURL[@]}" --fail https://ryanfitter.co.uk/content/site.json | "$RUNTIME/.venv/bin/python" -c 'import json,sys; d=json.load(sys.stdin); assert d["version"]==1 and isinstance(d["sections"],list)'

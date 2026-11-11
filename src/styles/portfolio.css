@@ -195,3 +195,5 @@
 .cms-site .cms-project-image{width:100%;height:200px;object-fit:cover;border-radius:5px;margin:15px 0 6px;border:1px solid #d9dfd5}
 .cms-site .cms-section-image{display:block;width:100%;max-height:600px;object-fit:contain;border-radius:6px;margin:20px auto 36px}
 .cms-site .cms-project-detail-image{width:100%;max-height:720px;object-fit:contain;border:1px solid #d9dfd5;border-radius:8px;margin:0 0 35px;background:#fff}
+
+.cms-screenshot-figure{margin-block:0}.cms-screenshot-figure h2{font-size:clamp(2rem,4vw,3.2rem);letter-spacing:-.06em;margin:0 0 8px}.cms-screenshot-figure>p{max-width:800px;color:var(--pf-muted)}.cms-screenshot-figure img{width:100%;max-height:700px;object-fit:contain;border:1px solid #d9dfd5;border-radius:8px;background:white}.cms-screenshot-figure figcaption{font-size:12px;color:var(--pf-muted);margin-top:13px}.cms-screenshot-placeholder{display:grid;place-items:center;min-height:260px;padding:30px;background:var(--pf-panel);color:var(--pf-muted);border:1px dashed #b7c9b9;border-radius:7px;text-align:center}

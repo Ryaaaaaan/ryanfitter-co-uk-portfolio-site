@@ -1,5 +1,6 @@
 import defaults from './defaults.json';
 import starter from './starter.json';
+import screenshot from './image.json';
 import type {Project} from '../portfolioData';
 import {useEffect,useState} from 'react';
 export type Link={label:string;href:string};
@@ -7,6 +8,7 @@ export type Section={id:string;type:string;enabled:boolean;image?:string;style:{
 export type SiteContent={version:number;title:string;description:string;theme:{background:string;text:string;muted:string;accent:string;panel:string;font:string;contentWidth:number};header:{enabled:boolean;brand:string;links:Link[]};footer:{enabled:boolean;text:string;links:Link[]};projects:Project[];sections:Section[]};
 export const blankSite=defaults as SiteContent;
 export const starterSite=starter as SiteContent;
+export const screenshotSection=screenshot as Section;
 export const clone=<T,>(value:T):T=>JSON.parse(JSON.stringify(value));
 export function usePublishedSite(){
   const [site,setSite]=useState<SiteContent>(blankSite);

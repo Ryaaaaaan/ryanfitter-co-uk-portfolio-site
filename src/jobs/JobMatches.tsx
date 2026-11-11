@@ -17,6 +17,7 @@ export function JobMatches({csrf}:{csrf:string}){
  const [error,setError]=useState(''),[message,setMessage]=useState('');
  const [query,setQuery]=useState(''),[tab,setTab]=useState<'new'|'saved'|'all'>('new');
  const [hours,setHours]=useState<'all'|'part'|'other'>('all');
+ const [quality,setQuality]=useState<'all'|'strong'|'possible'|'explore'>('all');
  async function load(silent=false){
    if(!silent)setLoading(true);
    try{
@@ -35,11 +36,14 @@ export function JobMatches({csrf}:{csrf:string}){
  },[result.scan?.id,result.scan?.status]);
  const matches=useMemo(()=>result.matches.filter(m=>{
    if(tab!=='all'&&m.state!==tab)return false;
+   if(quality==='strong'&&m.score<80)return false;
+   if(quality==='possible'&&(m.score<65||m.score>=80))return false;
+   if(quality==='explore'&&m.score>=65)return false;
    if(hours==='part'&&!/10|15|20|25|30|part.time|contract|freelance/i.test(m.hours+' '+m.employment_type))return false;
    if(hours==='other'&&/10|15|20|25|30|part.time|contract|freelance/i.test(m.hours+' '+m.employment_type))return false;
    const content=[m.company,m.title,m.reason,m.source,m.location,m.employment_type].join(' ').toLowerCase();
    return content.includes(query.trim().toLowerCase());
- }),[result.matches,tab,hours,query]);
+ }),[result.matches,tab,hours,quality,query]);
  async function action(key:string,name:'save'|'dismiss'){
    setBusy(key);setMessage('');setError('');
    try{
@@ -68,6 +72,7 @@ export function JobMatches({csrf}:{csrf:string}){
  }
  const newest=result.matches.filter(m=>m.state==='new').length;
  const saved=result.matches.filter(m=>m.state==='saved').length;
+ const explore=result.matches.filter(m=>m.state==='new'&&m.score<65).length;
  return <section className="matches-screen">
   <div className="matches-head">
    <div><h2>Job matches</h2><p>Private, ranked vacancies from approved public job feeds, plus selected matches from your ChatGPT search.</p></div>
@@ -76,8 +81,8 @@ export function JobMatches({csrf}:{csrf:string}){
    </button>
   </div>
   <div className="matches-summary">
-    <div><small>UNREVIEWED</small><strong>{newest}</strong></div>
-    <div><small>SAVED TO APPLICATIONS</small><strong>{saved}</strong></div>
+    <div><small>TO REVIEW</small><strong>{newest}</strong></div>
+    <div><small>EXPLORE (WEAKER FIT)</small><strong>{explore}</strong></div>
     <div><small>LAST SCAN</small><strong className="matches-scan-time">{showDate(result.scan?.finished||result.scan?.started)}</strong></div>
     <div><small>SCAN FREQUENCY</small><strong className="matches-scan-time">Mon · Wed · Fri</strong></div>
   </div>
@@ -85,7 +90,7 @@ export function JobMatches({csrf}:{csrf:string}){
    <div><strong>Automated schedule:</strong> Monday, Wednesday and Friday around 8:00 AM London time, plus an on-demand scan.</div>
    <div>{result.scan?<>Last attempt: <strong>{result.scan.status}</strong> · {result.scan.added} newly found · {result.scan.reviewed} matched</>:'Awaiting first feed scan; imported ChatGPT recommendations are available below.'}</div>
    {result.scan?.details&&<div className="matches-scan-error">Source issue: {result.scan.details}</div>}
-   <p>Matching is automated; employer eligibility, posting status and fully remote arrangements need checking before applying. Sources: <a href="https://himalayas.app" target="_blank" rel="noreferrer">Himalayas</a> and <a href="https://remotive.com" target="_blank" rel="noreferrer">Remotive</a>.</p>
+   <p>Matching is automated; employer eligibility, posting status and fully remote arrangements need checking before applying. Sources: <a href="https://himalayas.app" target="_blank" rel="noreferrer">Himalayas</a>, <a href="https://remotive.com" target="_blank" rel="noreferrer">Remotive</a> and <a href="https://jobicy.com" target="_blank" rel="noreferrer">Jobicy</a>. Your previous ChatGPT recommendations are a separate one-time import.</p>
   </div>
   {error&&<p className="jobs-error" role="alert">{error}</p>}
   {message&&<p className="jobs-notice" role="status">{message}</p>}
@@ -95,6 +100,10 @@ export function JobMatches({csrf}:{csrf:string}){
        {value==='new'?'To review':value==='saved'?'Saved':'All'} {value==='new'?newest:value==='saved'?saved:result.matches.length}
      </button>)}
     </div>
+    <label>Relevance<select value={quality} onChange={e=>setQuality(e.target.value as typeof quality)}>
+      <option value="all">All relevant roles</option><option value="strong">Strong fit (80+)</option>
+      <option value="possible">Possible (65–79)</option><option value="explore">Explore / lower fit (under 65)</option>
+    </select></label>
     <label>Hours<select value={hours} onChange={e=>setHours(e.target.value as typeof hours)}>
       <option value="all">Any hours</option><option value="part">Part-time / flexible</option><option value="other">Other / not stated</option>
     </select></label>
@@ -104,11 +113,11 @@ export function JobMatches({csrf}:{csrf:string}){
     <h3>No matching vacancies</h3><p>Try clearing your filters or run a fresh scan. The board will not invent jobs when sources return none.</p>
   </div>:<div className="matches-list">{matches.map(m=><article key={m.key} className="matches-card">
    <div className="matches-card-details">
-     <div className="matches-tags"><span className="matches-score">Fit {m.score}/100</span><span>{m.hours||m.employment_type||'Hours not stated'}</span><span>{m.location||'Remote — location check needed'}</span></div>
+     <div className="matches-tags"><span className={"matches-score "+(m.score<65?"matches-score-low":"")}>{m.score>=80?"Strong":m.score>=65?"Possible":"Explore"} · Fit {m.score}/100</span><span>{m.hours||m.employment_type||'Hours not stated'}</span><span>{m.location||'Remote — location check needed'}</span></div>
      <small className="matches-company">{m.company}</small>
      <h3>{m.title}</h3>
      <p className="matches-reason">{m.reason}</p>
-     <div className="matches-warning">Check before applying: {m.warning}</div>
+     <div className="matches-warning">{m.score<65&&<strong>Lower match — possibly unsuitable for your hours or experience. </strong>}Check before applying: {m.warning}</div>
      <div className="matches-meta">{m.salary&&<span>{m.salary}</span>}<span>{m.source}</span>{m.posted&&<span>Published {m.posted}</span>}</div>
    </div>
    <div className="matches-card-actions">
