@@ -269,13 +269,19 @@ try{
     role_tags:['Ecommerce'],seniority:'Junior / entry',reason:'Ecommerce tasks.',
     warning:'Confirm UK contractor eligibility',confidence:'review',
     engagement_route:'Independent contractor',
-    uk_eligibility:'Worldwide claim — UK terms unverified',cross_border_review:true,
+    uk_eligibility:'Worldwide remote — no UK-specific employment terms confirmed',
+    uk_group:'worldwide',geography_adjustment:-10,source_adjustment:-4,cross_border_review:true,
     remote_status:'Remote-labelled (unverified)',hours_fit:'Hours within 30/week',
     fit_evidence:['Worldwide independent-contractor: verify invoicing.'],
     apply_url:'https://example.com/world-job'
   };
+  const ukListed={...worldContract,key:'uk-test',company:'UK Listed Demo',score:86,
+    cv_score:82,lifestyle_score:88,source:'Reed',location:'UK remote',
+    uk_group:'uk_listed',uk_eligibility:'UK listed as eligible — employment terms unverified',
+    cross_border_review:false,source_adjustment:0,geography_adjustment:0,
+    apply_url:'https://example.com/uk-job'};
   await page.route('**/admin/api/job-matches',r=>r.fulfill(json({
-    matches:[worldContract],scan:null,history:[]
+    matches:[worldContract,ukListed],scan:null,history:[]
   })));
   await page.setViewportSize({width:1400,height:850});
   await page.goto('http://127.0.0.1:5173/admin',{waitUntil:'networkidle'});
@@ -301,6 +307,19 @@ try{
   await page.goto('http://127.0.0.1:5173/admin/job-matches',{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Job matches',level:2}).waitFor();
   assert.equal(await page.getByText('International contractor — review before applying').count(),1);
+  assert.equal(await page.locator('.matches-card').count(),2);
+  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+    'UK Listed Demo','UK-first default must rank the UK-listed vacancy above worldwide jobs');
+  await page.getByLabel('UK eligibility').selectOption('worldwide');
+  assert.equal(await page.locator('.matches-card').count(),1,
+    'Worldwide filter must work for all job types, not only contractors');
+  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+    'Motu Novu Test');
+  await page.getByLabel('UK eligibility').selectOption('uk');
+  assert.equal(await page.locator('.matches-card').count(),1);
+  assert.equal(await page.locator('.matches-card .matches-company').first().innerText(),
+    'UK Listed Demo');
+  await page.getByLabel('UK eligibility').selectOption('all');
   await page.getByLabel('Work arrangement').selectOption('employment');
   assert.equal(await page.getByText('No matching vacancies').count(),1);
   await page.getByRole('button',{name:'Reset filters'}).click();
