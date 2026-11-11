@@ -14,6 +14,12 @@ export type Project = {
   links: { label: string; href: string }[];
   note?: string;
   image?: string;
+  /** Optional homepage-card overrides; existing case-study content remains intact. */
+  cardSummary?: string;
+  cardMetricValue?: string;
+  cardMetricLabel?: string;
+  cardLinkLabel?: string;
+  cardVisible?: boolean;
 };
 
 export const projects: Project[] = [
