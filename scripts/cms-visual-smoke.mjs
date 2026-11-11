@@ -88,7 +88,7 @@ try{
   assert(orderedIndex('Heading')<orderedIndex('Body'),
     'Large heading should appear ahead of the supporting body copy');
   // Pressing Enter in a heading creates a real displayed line break.
-  await field.fill('A properly live\\npreview');
+  await field.fill('A properly live\npreview');
   const heroHeading=page.locator('.portfolio-hero h1');
   assert((await heroHeading.innerText()).includes('\\n'),'Heading line break not visible');
   assert.equal(await heroHeading.evaluate(el=>getComputedStyle(el).whiteSpace),'pre-line');
