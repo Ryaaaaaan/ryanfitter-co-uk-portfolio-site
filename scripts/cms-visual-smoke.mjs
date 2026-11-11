@@ -291,7 +291,10 @@ try{
   ]);
   await page.getByRole('button',{name:'Update LoftyCards listings'}).waitFor();
   assert.equal(await page.getByText('1',{exact:true}).count()>0,true,'Open task count not updated');
-  await page.locator('select[aria-label="Move Update LoftyCards listings to"]').selectOption('in_progress');
+  await Promise.all([
+    page.waitForResponse(r=>r.url().endsWith('/admin/api/tasks/1')&&r.request().method()==='PUT'),
+    page.locator('select[aria-label="Move Update LoftyCards listings to"]').selectOption('in_progress')
+  ]);
   assert.equal(workTasks[0].status,'in_progress');
   await page.goto('http://127.0.0.1:5173/admin/job-matches',{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Job matches'}).waitFor();
