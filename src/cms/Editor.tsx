@@ -395,12 +395,22 @@ export function CmsEditor({csrf}:{csrf:string}){
       <div className="visual-cms-stage">
         <div className="visual-stage-bar">
           <button type="button" className="visual-mobile-rail" onClick={()=>setRailOpen(!railOpen)}>☰ Sections</button>
-          <div className="visual-stage-label"><strong>ryanfitter.co.uk</strong><span>Live draft preview · {page==='home'?'Home':'Case study'}</span></div>
+          <button type="button" className="visual-stage-panel-toggle visual-desktop-rail"
+            aria-pressed={showRail} onClick={()=>setShowRail(value=>!value)}>
+            {showRail?'◀ Sections':'☰ Sections'}
+          </button>
+          <div className="visual-stage-label"><strong>ryanfitter.co.uk</strong><span>{page==='home'?'Home':'Case study'} · {designWidth}px wide</span></div>
           <div className="visual-stage-actions">
-           <div className="visual-viewports" aria-label="Preview width">
-             {(['desktop','tablet','mobile'] as const).map(v=><button type="button" key={v} aria-pressed={viewport===v} onClick={()=>setViewport(v)}>{pretty(v)}</button>)}
+           <div className="visual-viewports" role="group" aria-label="Preview device width">
+             {(['desktop','laptop','tablet','phone'] as const).map(v=><button type="button"
+               key={v} aria-pressed={viewport===v} title={pretty(v)+' — '+previewPresets[v]+'px'}
+               onClick={()=>setViewport(v)}>{pretty(v)}</button>)}
            </div>
-           <button type="button" onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Expand'}</button>
+           <button type="button" className="visual-stage-panel-toggle visual-desktop-inspector"
+             aria-pressed={showInspector} onClick={()=>setShowInspector(value=>!value)}>
+             {showInspector?'Inspector ▶':'◧ Inspector'}
+           </button>
+           <button type="button" className="visual-focus-button" onClick={()=>setFocus(!focus)}>{focus?'Exit focus':'Preview only'}</button>
            <button type="button" className="visual-mobile-inspector" onClick={()=>setInspectorOpen(!inspectorOpen)}>Edit</button>
           </div>
         </div>
@@ -411,7 +421,7 @@ export function CmsEditor({csrf}:{csrf:string}){
             <div><button type="button" onClick={()=>useTemplate(starterSite)}><b>Professional portfolio</b><small>Hero, case studies, expertise, about, contact</small></button>
               <button type="button" onClick={()=>useTemplate(blankSite)}><b>Blank slate</b><small>One simple introduction</small></button></div>
           </div>}
-          <div className={'visual-page-frame '+viewport} style={frameStyle}
+          <div className={'visual-page-frame '+previewLayout} style={frameStyle}
             onClickCapture={e=>{const target=e.target as HTMLElement;
               if(target.closest('a,button'))e.preventDefault();
               if(target.closest('.portfolio-header'))select('header',page);
@@ -430,9 +440,36 @@ export function CmsEditor({csrf}:{csrf:string}){
                 <ProjectDetail project={projectForPreview} projects={draft.projects}/>
               </div>:<div className="visual-empty-page">No case studies yet. Add one from the left rail.</div>}
             </PortfolioChrome>
+            <div className="visual-frame-resize-handle" role="separator" tabIndex={0}
+              aria-label="Resize preview width" aria-orientation="vertical"
+              aria-valuemin={320} aria-valuemax={1920} aria-valuenow={designWidth}
+              title="Drag to resize the preview, or use arrow keys"
+              onPointerDown={e=>startFrameResize(e,designWidth,previewZoom)}
+              onPointerMove={moveFrameResize} onPointerUp={finishFrameResize} onPointerCancel={finishFrameResize}
+              onKeyDown={e=>{
+                if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+                  e.preventDefault();setPreviewWidth(designWidth+(e.key==='ArrowRight'?20:-20));
+                }
+              }}><span>⋮</span></div>
           </div>
         </div>
-        <div className="visual-stage-footer"><span>Draft preview updates on every edit</span><span>Desktop · tablet · mobile</span></div>
+        <div className="visual-stage-footer">
+          <div className="visual-preview-size">
+            <label htmlFor="preview-width">Preview width</label>
+            <input id="preview-width" type="range" min="320" max="1920" step="10"
+              value={designWidth} aria-label="Preview width in pixels"
+              onChange={e=>setPreviewWidth(Number(e.target.value))}/>
+            <input type="number" aria-label="Preview width pixels" min="320" max="1920"
+              value={designWidth} onChange={e=>setPreviewWidth(Number(e.target.value))}/>
+            <span>px</span>
+          </div>
+          <div className="visual-preview-zoom">
+            <button type="button" aria-pressed={fitToStage} onClick={()=>setFitToStage(value=>!value)}>
+              {fitToStage?'Fit preview':'100% size'}
+            </button>
+            <span>{Math.round(previewZoom*100)}% zoom</span>
+          </div>
+        </div>
       </div>
       <div role="separator" aria-label="Resize editor inspector" aria-orientation="vertical"
         aria-valuemin={225} aria-valuemax={430} aria-valuenow={inspectorWidth} tabIndex={0}
