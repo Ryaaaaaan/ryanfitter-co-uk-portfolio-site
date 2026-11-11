@@ -17,10 +17,11 @@ export type SectionStyle={
   headingSize?:number;headingLineHeight?:number;headingLetterSpacing?:number;headingWeight?:number;
   statValueSize?:number;statLabelSize?:number;
   headingColor?:string;bodyColor?:string;eyebrowColor?:string;emphasisColor?:string;mutedColor?:string;
+  panelColor?:string;borderColor?:string;
 };
 export type SectionLayout={
   /** 0 = automatic columns, following current item count. */
-  columns?:number;gap?:number;split?:number;verticalAlign?:'start'|'center'|'end';copyMaxWidth?:number;
+  view?:'grid'|'list';columns?:number;gap?:number;split?:number;verticalAlign?:'start'|'center'|'end';copyMaxWidth?:number;
 };
 export type Section={id:string;type:string;enabled:boolean;anchor?:string;buttonStyle?:ButtonStyle;image?:string;imageSide?:string;author?:string;role?:string;style:SectionStyle;layout?:SectionLayout;heading?:string;body?:string;eyebrow?:string;index?:string;emphasis?:string;caption?:string;email?:string;note?:string;linkLabel?:string;buttons?:Link[];paragraphs?:string[];skills?:string[];items?:{value?:string;label?:string;heading?:string;body?:string;image?:string;caption?:string}[]};
 export type SiteContent={version:number;title:string;description:string;theme:{background:string;text:string;muted:string;accent:string;panel:string;font:string;contentWidth:number};header:{enabled:boolean;brand:string;links:Link[]};footer:{enabled:boolean;text:string;links:Link[]};projects:Project[];sections:Section[]};

@@ -78,8 +78,34 @@ try{
   assert(await page.locator('.visual-preview-section').count()>=6,'Starter blocks did not render');
   await page.locator('.visual-preview-section').first().click();
   const field=page.getByLabel('Heading',{exact:true});
+  // Content fields follow the rendered hierarchy, not JSON insertion order.
+  const contentOrder=await page.locator('.visual-inspector-body .visual-fieldset').first()
+    .locator(':scope > label.visual-field').evaluateAll(nodes=>
+      nodes.map(node=>node.textContent.trim().split('\n')[0].trim()));
+  const orderedIndex=(name)=>contentOrder.findIndex(value=>value.startsWith(name));
+  assert(orderedIndex('Headline')>=0&&orderedIndex('Headline')<orderedIndex('Heading'),
+    'Small eyebrow should appear ahead of the large heading');
+  assert(orderedIndex('Heading')<orderedIndex('Body'),
+    'Large heading should appear ahead of the supporting body copy');
+  // Pressing Enter in a heading creates a real displayed line break.
+  await field.fill('A properly live\npreview');
+  const heroHeading=page.locator('.portfolio-hero h1');
+  assert((await heroHeading.innerText()).includes('\n'),'Heading line break not visible');
+  assert.equal(await heroHeading.evaluate(el=>getComputedStyle(el).whiteSpace),'pre-line');
   await field.fill('A properly live preview');
-  assert((await page.locator('.portfolio-hero h1').innerText()).includes('A properly live preview'));
+  assert((await heroHeading.innerText()).includes('A properly live preview'));
+
+  // Section palette only changes this block, not the global site theme.
+  await page.getByRole('button',{name:'Block theme Forest'}).click();
+  const heroSection=page.locator('.cms-section-hero');
+  assert.equal(await heroSection.evaluate(el=>getComputedStyle(el).backgroundColor),
+    'rgb(23, 55, 42)');
+  const heroThemeText=await heroHeading.evaluate(el=>getComputedStyle(el).color);
+  assert.equal(heroThemeText,'rgb(242, 248, 242)');
+  await page.getByRole('button',{name:'Block theme Inherit'}).click();
+  assert.equal(await heroSection.evaluate(el=>getComputedStyle(el).backgroundColor),
+    'rgba(0, 0, 0, 0)');
+  await page.getByRole('button',{name:'Block theme Forest'}).click();
 
   // Save, reload and publish-style rehydration must not bring back a starter prompt.
   await Promise.all([
@@ -144,6 +170,53 @@ try{
   const aboutCols=await page.locator('.cms-section-about .portfolio-about').evaluate(
     el=>getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length);
   assert.equal(aboutCols,1,'One-column About layout did not apply');
+
+  // Portfolio cards: grid/list presentation, direct individual edits, hidden
+  // cards and persistent settings must work without touching full case studies.
+  await page.locator('.visual-rail-section').filter({hasText:'Real work. Real retail.'})
+    .locator('.visual-rail-select').click();
+  const gallery=page.locator('.cms-section-projects');
+  assert.equal(await gallery.locator('.portfolio-project').count(),3);
+  await page.getByRole('button',{name:'☰ List'}).click();
+  assert(await gallery.evaluate(el=>el.classList.contains('cms-projects-list')),
+    'List mode must change the rendered portfolio section');
+  const listRects=await gallery.locator('.portfolio-project').evaluateAll(
+    nodes=>nodes.map(el=>({x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,
+      width:el.getBoundingClientRect().width})));
+  assert(listRects[1].y>listRects[0].y+40,'List layout must put cards on separate rows');
+  assert(Math.abs(listRects[0].width-listRects[1].width)<2,'List cards should use equal row widths');
+  await gallery.locator('[data-cms-project-slug="loftycards"]').click();
+  await page.locator('[aria-label="Card project name"]').fill('LoftyCards Test');
+  await page.locator('[aria-label="Card description"]').fill('Edited only for this homepage card.');
+  await page.locator('[aria-label="Card result value"]').fill('12,345');
+  await page.locator('[aria-label="Card link label"]').fill('See the work');
+  assert.equal(await gallery.locator('.portfolio-project').first().locator('h3').innerText(),'LoftyCards Test');
+  assert((await gallery.locator('.portfolio-project').first().innerText()).includes('Edited only for this homepage card.'));
+  assert((await gallery.locator('.portfolio-project').first().innerText()).includes('12,345'));
+  assert((await gallery.locator('.portfolio-project').first().innerText()).includes('See the work'));
+  await page.getByRole('checkbox',{name:'Show this card on the homepage'}).uncheck();
+  assert.equal(await gallery.locator('.portfolio-project').count(),2,
+    'Hidden homepage card must not delete the case study');
+  await page.getByRole('checkbox',{name:'Show this card on the homepage'}).check();
+  assert.equal(await gallery.locator('.portfolio-project').count(),3);
+  await page.getByRole('button',{name:'← Portfolio layout & card order'}).click();
+  await page.getByRole('button',{name:'▦ Grid'}).click();
+  assert(!await gallery.evaluate(el=>el.classList.contains('cms-projects-list')));
+  await page.getByRole('button',{name:'☰ List'}).click();
+  await Promise.all([
+    page.waitForResponse(response=>response.url().endsWith('/admin/api/cms')&&response.request().method()==='PUT'),
+    page.getByRole('button',{name:'Save draft'}).click()
+  ]);
+  await page.reload({waitUntil:'networkidle'});
+  const restoredGallery=page.locator('.cms-section-projects');
+  assert(await restoredGallery.evaluate(el=>el.classList.contains('cms-projects-list')),
+    'Saved list layout must survive reload');
+  assert((await restoredGallery.locator('.portfolio-project').first().innerText()).includes('Edited only for this homepage card.'));
+  assert.equal(await restoredGallery.locator('.portfolio-project').count(),3);
+  await restoredGallery.locator('[data-cms-project-slug="loftycards"]').click();
+  await page.getByRole('button',{name:'Edit full case-study page ↗'}).click();
+  await page.locator('.portfolio-detail').waitFor();
+  assert.equal(await page.locator('.portfolio-detail').count(),1);
 
   await page.locator('.visual-rail-page select').selectOption('projects');
   await page.locator('.portfolio-detail').waitFor();

@@ -46,6 +46,26 @@ function newArrayItem(name:string,values:Value[],sectionType:string):Value{
  if(values.length)return cloneEmpty(values[values.length-1]);
  return '';
 }
+/** Sort inputs like the reader sees them: small eyebrow, large heading, copy,
+ * then supporting elements. The original object keys remain unchanged on save. */
+const contentFieldPriority=['eyebrow','index','descriptor','date','heading','client','emphasis','title',
+  'body','paragraphs','summary','value','label','caption','items','image','imageSide',
+  'skills','buttons','links','email','author','role','note','linkLabel','style',
+  'enabled','id','type','slug'];
+const orderedContentFields=(fields:Record<string,Value>,sectionType:string):[string,Value][]=>{
+  const entries=Object.entries(fields);
+  if(!sectionType)return entries;
+  const rank=(key:string)=>{const idx=contentFieldPriority.indexOf(key);return idx<0?14:idx;};
+  return entries.sort((a,b)=>rank(a[0])-rank(b[0]));
+};
+const blockColourPresets=[
+ {name:'Inherit',background:'',text:'',accent:'',mutedColor:'',panelColor:'',borderColor:''},
+ {name:'Paper',background:'#f7f8f3',text:'#172520',accent:'#24634b',mutedColor:'#52615a',panelColor:'#fffef9',borderColor:'#d9dfd5'},
+ {name:'Forest',background:'#17372a',text:'#f2f8f2',accent:'#a9dcba',mutedColor:'#c2d9c7',panelColor:'#244735',borderColor:'#547461'},
+ {name:'Slate',background:'#eff3f5',text:'#243449',accent:'#355c8a',mutedColor:'#586c7c',panelColor:'#ffffff',borderColor:'#c5d1da'},
+ {name:'Dark',background:'#151e1d',text:'#ecf2ef',accent:'#66cf9e',mutedColor:'#b0c9bd',panelColor:'#22302c',borderColor:'#41554d'},
+ {name:'Warm',background:'#fcf3e8',text:'#35271f',accent:'#a65c36',mutedColor:'#776257',panelColor:'#fffaf4',borderColor:'#e2ccb7'}
+] as const;
 function Field({
  value,onChange,name='Settings',sectionType='',onPickImage,anchorOptions=[]
 }:{value:Value;onChange:(v:Value)=>void;name?:string;sectionType?:string;onPickImage:PickImage;
@@ -115,7 +135,7 @@ function Field({
        {value&&<button type="button" onClick={()=>onChange('')}>Remove</button>}</div>
    </div>;
    const isColor=['background','text','muted','accent','panel','headingColor','bodyColor',
-     'eyebrowColor','emphasisColor','mutedColor','primaryBackground','primaryText',
+     'eyebrowColor','emphasisColor','mutedColor','panelColor','borderColor','primaryBackground','primaryText',
      'secondaryBackground','secondaryText','borderColor'].includes(name)
      &&(value===''||/^#[0-9a-fA-F]{6}$/.test(value));
    if(isColor)return <label className="visual-field">{pretty(name)}
@@ -123,10 +143,14 @@ function Field({
        <input aria-label={pretty(name)+' hex value'} value={value} placeholder="Inherit" onChange={e=>onChange(e.target.value)}/></div>
      {value===''&&<small>Inherits the site theme</small>}
    </label>;
-   const multiline=['body','description','summary','challenge','result','note','text','caption','emphasis'].includes(name)||value.length>125;
-   return <label className="visual-field">{pretty(name)}
-    {multiline?<textarea rows={4} value={value} onChange={e=>onChange(e.target.value)}/>:
+   const isHeading=['heading','emphasis','client','title'].includes(name);
+   const multiline=isHeading||['body','description','summary','challenge','result','note','text','caption'].includes(name)||value.length>125;
+   const displayLabel=name==='eyebrow'?'Headline (small)':
+     name==='heading'?'Heading (large)':pretty(name);
+   return <label className="visual-field">{displayLabel}
+    {multiline?<textarea rows={isHeading?3:4} aria-label={pretty(name)} value={value} onChange={e=>onChange(e.target.value)}/>:
     <input value={value} onChange={e=>onChange(e.target.value)}/>}
+    {isHeading&&<small>Press Enter to control where the heading breaks onto a new line.</small>}
    </label>;
  }
  if(Array.isArray(value)){
@@ -145,7 +169,7 @@ function Field({
  const fields=(name==='Details'&&sectionType&&'href' in value)
    ?{...value,variant:value.variant||'primary'}:value;
  return <fieldset className="visual-fieldset"><legend>{pretty(name)}</legend>
-  {Object.entries(fields).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
+  {orderedContentFields(fields,sectionType).map(([k,v])=><Field key={k} value={v} name={k} sectionType={sectionType} onPickImage={onPickImage} anchorOptions={anchorOptions} onChange={newValue=>onChange({...value,[k]:newValue})}/>)}
  </fieldset>;
 }
 
@@ -361,13 +385,21 @@ export function CmsEditor({csrf}:{csrf:string}){
    const sections=[...draft.sections];sections.splice(index+1,0,next);
    edit({...draft,sections});select(next.id,'home');
  }
- function addProject(){
+ function addProject(openIn:Page='projects'){
    if(!draft||!starterSite.projects[0])return;
    const project=clone(starterSite.projects[0]);
    project.slug='project-'+Date.now();project.number=String(draft.projects.length+1).padStart(2,'0');
    project.client='New project';project.title='My new case study';
    project.image='';project.note='';
-   edit({...draft,projects:[...draft.projects,project]});select('project:'+project.slug,'projects');
+   project.cardSummary='Write a short introduction to this project.';
+   project.cardMetricValue='';project.cardMetricLabel='';
+   project.cardVisible=true;
+   edit({...draft,projects:[...draft.projects,project]});select('project:'+project.slug,openIn);
+ }
+ function moveProject(from:number,to:number){
+   if(!draft||from<0||to<0||from>=draft.projects.length||to>=draft.projects.length||from===to)return;
+   const projects=[...draft.projects];const [item]=projects.splice(from,1);projects.splice(to,0,item);
+   edit({...draft,projects});
  }
  const anchorOptions=(draft?.sections||[]).filter(s=>s.enabled).map(s=>({
    id:s.anchor||s.id,label:s.heading||s.eyebrow||sectionNames[s.type]||s.type
@@ -461,7 +493,7 @@ export function CmsEditor({csrf}:{csrf:string}){
         </>:<>
           <p className="visual-rail-caption">PROJECT PAGES <span>{draft.projects.length}</span></p>
           {draft.projects.map(p=><button key={p.slug} className={'visual-section-entry'+(selected==='project:'+p.slug?' active':'')} onClick={()=>select('project:'+p.slug,'projects')}>▦ <span>{p.client}</span></button>)}
-          <button className="visual-add-project" onClick={addProject}>+ Add case study</button>
+          <button className="visual-add-project" onClick={()=>addProject()}>+ Add case study</button>
         </>}
         <p className="visual-rail-caption">PAGE TEMPLATES</p>
         <details className="visual-sidebar-templates">
@@ -528,7 +560,9 @@ export function CmsEditor({csrf}:{csrf:string}){
                    role="button" tabIndex={0} aria-label={'Edit '+(s.heading||s.type)}
                    onKeyDown={e=>onCanvasKey(e,s.id)} onClick={()=>select(s.id,'home')}>
                   <span className="visual-section-label">{sectionNames[s.type]||pretty(s.type)}</span>
-                  <PortfolioSection section={s} site={draft}/>
+                  <PortfolioSection section={s} site={draft}
+                    onEditProject={s.type==='projects'?slug=>select('project:'+slug,'home'):undefined}
+                    selectedProjectSlug={s.type==='projects'&&page==='home'?project?.slug:undefined}/>
                 </div>)}
                 {draft.sections.filter(s=>s.enabled).length===0&&<div className="visual-empty-page">This draft has no visible sections. Add one from the left sidebar.</div>}
               </main>:projectForPreview?<div onClick={()=>select('project:'+projectForPreview.slug,'projects')} role="presentation">
@@ -597,8 +631,37 @@ export function CmsEditor({csrf}:{csrf:string}){
           <Field value={draft[selected as 'theme'|'header'|'footer'] as unknown as Value} onChange={v=>edit({...draft,[selected]:v})} name={pretty(selected)} onPickImage={pickImage} anchorOptions={anchorOptions}/>
         </>:selected==='projects'?<>
           <h3>Case studies</h3><p>Select a project on the left or click Add case study to create a new draft page.</p>
-          <button onClick={addProject}>+ Add case study</button>
+          <button onClick={()=>addProject()}>+ Add case study</button>
         </>:section?<>
+          {section.type==='projects'&&<div className="visual-portfolio-card-manager">
+            <strong>Portfolio card display</strong>
+            <p>Choose how the cards appear on your homepage. This also controls the published layout.</p>
+            <div className="visual-card-layout-toggle" role="group" aria-label="Portfolio card layout">
+              {(['grid','list'] as const).map(view=><button key={view} type="button"
+                aria-pressed={(section.layout?.view||'grid')===view}
+                onClick={()=>updateSection({...section,layout:{...section.layout,view}})}>
+                {view==='grid'?'▦ Grid':'☰ List'}
+              </button>)}
+            </div>
+            <p className="visual-portfolio-card-count">
+              {draft.projects.filter(p=>p.cardVisible!==false).length} visible cards
+            </p>
+            <div className="visual-portfolio-card-list">
+              {draft.projects.map((p,index)=><div key={p.slug} className="visual-portfolio-card-row">
+                <button type="button" className="visual-card-select"
+                  onClick={()=>select('project:'+p.slug,'home')}>{p.client}
+                  {p.cardVisible===false&&<small>Hidden</small>}
+                </button>
+                <button type="button" title={'Move '+p.client+' up'} disabled={index===0}
+                  onClick={()=>moveProject(index,index-1)}>↑</button>
+                <button type="button" title={'Move '+p.client+' down'} disabled={index===draft.projects.length-1}
+                  onClick={()=>moveProject(index,index+1)}>↓</button>
+              </div>)}
+            </div>
+            <button type="button" className="visual-add-mini"
+              onClick={()=>addProject('home')}>+ Add portfolio card</button>
+            <small>Select a card here or click one in the live preview to edit its content.</small>
+          </div>}
           <div className="visual-inspector-section-actions">
             <button type="button" onClick={()=>updateSection({...section,enabled:!section.enabled})}>{section.enabled?'Hide section':'Show section'}</button>
             <button type="button" onClick={()=>duplicateSection(draft.sections.indexOf(section))}>Duplicate</button>
@@ -622,14 +685,43 @@ export function CmsEditor({csrf}:{csrf:string}){
              onPickImage={pickImage} anchorOptions={anchorOptions} onChange={v=>{const next=v as unknown as Section;
                updateSection({...section,...next,style:{...section.style,...next.style}});
              }}/>
-           <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
+          <fieldset className="visual-block-theme-presets">
+            <legend>Block theme</legend>
+            <p>Apply a colour palette just to this section. Fine-tune colours below.</p>
+            <div className="visual-block-preset-grid" role="group" aria-label="Block colour presets">
+              {blockColourPresets.map(preset=>{
+                const active=Object.entries(preset).every(([key,value])=>
+                  key==='name'||(section.style as unknown as Record<string,string>)[key]===value
+                  ||((section.style as unknown as Record<string,string>)[key]===undefined&&value===''));
+                return <button key={preset.name} type="button"
+                  aria-label={'Block theme '+preset.name} aria-pressed={active}
+                  onClick={()=>{
+                    const clearText={headingColor:'',bodyColor:'',eyebrowColor:'',emphasisColor:''};
+                    const {name,...colours}=preset;
+                    updateSection({...section,style:{...section.style,...clearText,...colours}});
+                  }}>
+                  <span className="visual-block-preset-swatch"
+                    style={{background:preset.background||draft.theme.background,
+                      color:preset.text||draft.theme.text,
+                      borderColor:preset.borderColor||draft.theme.muted}}>
+                    <i style={{background:preset.accent||draft.theme.accent}}/>
+                    Aa
+                  </span>
+                  <span>{preset.name}</span>
+                </button>;
+              })}
+            </div>
+          </fieldset>
+          <p className="visual-inspector-help">These optional overrides apply to the selected block only. Leave colours empty to inherit the theme.</p>
           <Field name="Individual text colours" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
             value={{
               headingColor:section.style.headingColor||'',
               bodyColor:section.style.bodyColor||'',
               eyebrowColor:section.style.eyebrowColor||'',
               emphasisColor:section.style.emphasisColor||'',
-              mutedColor:section.style.mutedColor||''
+              mutedColor:section.style.mutedColor||'',
+              panelColor:section.style.panelColor||'',
+              borderColor:section.style.borderColor||''
             } as Value}
             onChange={v=>updateSection({...section,style:{...section.style,...(v as object)}})}/>
           {!!section.buttons?.length&&<Field name="Button styles" sectionType={section.type} onPickImage={pickImage} anchorOptions={anchorOptions}
@@ -675,7 +767,54 @@ export function CmsEditor({csrf}:{csrf:string}){
                ...(section.type==='about'?{copyMaxWidth:section.layout?.copyMaxWidth??0}:{})
              } as Value}
              onChange={v=>updateSection({...section,layout:{...section.layout,...(v as object)}})}/>
-         </>:project&&selectedProject?<>
+         </>:project&&selectedProject&&page==='home'?<>
+          <div className="visual-card-editor">
+            <p className="visual-help">Editing this homepage card. Name, category and dates are shared with its case-study page; the card description, metric and button label can be different.</p>
+            <button type="button" className="visual-back-button" onClick={()=>
+              select(draft.sections.find(s=>s.type==='projects')?.id||'sections','home')}>
+              ← Portfolio layout & card order
+            </button>
+            <label className="visual-check"><input type="checkbox" checked={project.cardVisible!==false}
+              onChange={e=>updateProject({...project,cardVisible:e.target.checked})}/>
+              Show this card on the homepage</label>
+            <label className="visual-field">Headline / category (small)
+              <input aria-label="Card category" value={project.descriptor}
+                onChange={e=>updateProject({...project,descriptor:e.target.value})}/></label>
+            <label className="visual-field">Dates
+              <input aria-label="Card dates" value={project.date}
+                onChange={e=>updateProject({...project,date:e.target.value})}/></label>
+            <label className="visual-field">Project heading (large)
+              <textarea aria-label="Card project name" rows={2} value={project.client}
+                onChange={e=>updateProject({...project,client:e.target.value})}/>
+              <small>Press Enter for a new heading line.</small></label>
+            <label className="visual-field">Card description
+              <textarea aria-label="Card description" rows={3}
+                value={project.cardSummary??project.title}
+                onChange={e=>updateProject({...project,cardSummary:e.target.value})}/></label>
+            <label className="visual-field">Highlight / result
+              <input aria-label="Card result value" value={project.cardMetricValue??project.facts[0]?.value??''}
+                onChange={e=>updateProject({...project,cardMetricValue:e.target.value})}/></label>
+            <label className="visual-field">Result caption
+              <input aria-label="Card result caption" value={project.cardMetricLabel??project.facts[0]?.label??''}
+                onChange={e=>updateProject({...project,cardMetricLabel:e.target.value})}/></label>
+            <label className="visual-field">Card link text
+              <input aria-label="Card link label" value={project.cardLinkLabel??draft.sections.find(s=>s.type==='projects')?.linkLabel??'Case study'}
+                onChange={e=>updateProject({...project,cardLinkLabel:e.target.value})}/></label>
+            <Field name="image" value={project.image||''} onPickImage={pickImage}
+              onChange={v=>updateProject({...project,image:v as string})}/>
+            <div className="visual-card-editor-actions">
+              <button type="button" onClick={()=>{
+                const original={...project};
+                delete original.cardSummary;delete original.cardMetricValue;
+                delete original.cardMetricLabel;delete original.cardLinkLabel;
+                updateProject(original);
+              }}>Reset card text to case study</button>
+              <button type="button" onClick={()=>select('project:'+project.slug,'projects')}>
+                Edit full case-study page ↗
+              </button>
+            </div>
+          </div>
+        </>:project&&selectedProject?<>
           <div className="visual-inspector-section-actions">
              <button type="button" onClick={()=>{if(window.confirm('Remove this case study from your draft?')){edit({...draft,projects:draft.projects.filter(p=>p.slug!==project.slug)});setSelected('projects');}}}>Delete case study</button>
           </div>

@@ -32,10 +32,13 @@ export function Buttons({links=[],style:options}:{links?:Link[];style?:ButtonSty
   })}</div>;
 }
 function Heading({section:s}:{section:Section}){return <div className="portfolio-section-heading"><div>{s.eyebrow&&<span className="portfolio-kicker">{s.eyebrow}</span>}<h2>{s.heading}</h2></div>{s.body&&<p>{s.body}</p>}</div>;}
-export function PortfolioSection({section:s,site}:{section:Section;site:SiteContent}){
+export function PortfolioSection({section:s,site,onEditProject,selectedProjectSlug}:{
+ section:Section;site:SiteContent;onEditProject?:(slug:string)=>void;selectedProjectSlug?:string
+}){
   const typography=s.style;
   const layout=s.layout||{};
-  const itemCount=s.type==='projects'?site.projects.length:(s.items?.length||0);
+  const visibleProjects=site.projects.filter(project=>project.cardVisible!==false);
+  const itemCount=s.type==='projects'?visibleProjects.length:(s.items?.length||0);
   const columns=Math.max(1,Math.min(12,layout.columns||itemCount||1));
   const split=layout.split??50;
   const aboutSingle=s.type==='about'&&(layout.columns===1||
@@ -45,6 +48,10 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
     background:typography.background||undefined,color:typography.text||undefined,
     '--pf-ink':typography.text||undefined,'--pf-accent':typography.accent||undefined,
     '--pf-muted':typography.mutedColor||undefined,
+    '--pf-panel':typography.panelColor||undefined,
+    '--pf-line':typography.borderColor||undefined,
+    '--cms-section-background':typography.background||undefined,
+    '--cms-section-foreground':typography.text||undefined,
     '--cms-heading-color':typography.headingColor||undefined,
     '--cms-body-color':typography.bodyColor||typography.text||undefined,
     '--cms-eyebrow-color':typography.eyebrowColor||undefined,
@@ -69,6 +76,7 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
   } as CSSProperties;
   const classes=[
     'cms-section','cms-section-'+s.type,
+    s.type==='projects'&&layout.view==='list'?'cms-projects-list':'',
     typography.headingColor?'cms-override-heading-color':'',
     (typography.bodyColor||typography.text)?'cms-override-body-color':'',
     (typography.eyebrowColor||typography.accent)?'cms-override-eyebrow-color':'',
@@ -99,7 +107,38 @@ export function PortfolioSection({section:s,site}:{section:Section;site:SiteCont
     case 'cta':content=<div className="portfolio-container cms-cta"><div><h2>{s.heading}</h2><p>{s.body}</p></div><Buttons links={s.buttons} style={s.buttonStyle}/></div>;break;
     case 'divider':content=<div className="portfolio-container cms-divider"><hr/></div>;break;
     case 'stats':content=<div className="portfolio-container portfolio-proof-grid">{s.items?.map((item,i)=><div key={i}><strong>{item.value}</strong><span>{item.label}</span></div>)}</div>;break;
-    case 'projects':content=<div className="portfolio-container"><Heading section={s}/><div className="portfolio-projects">{site.projects.map(project=><article className="portfolio-project" key={project.slug}><div className="portfolio-project-top"><span>{project.number} / {project.descriptor}</span><span>{project.date}</span></div>{project.image&&<img className="cms-project-image" src={project.image} alt={project.client+" website screenshot"} loading="lazy"/>}<a className="portfolio-project-title" href={'/work/'+project.slug}><h3>{project.client}</h3><span>↗</span></a><p>{project.title}</p><div className="portfolio-project-end"><span>{project.facts[0]?.value}<small>{project.facts[0]?.label}</small></span><a href={'/work/'+project.slug}>{s.linkLabel} ↗</a></div></article>)}</div><p className="portfolio-work-caveat">{s.note}</p></div>;break;
+    case 'projects':content=<div className="portfolio-container">
+      <Heading section={s}/>
+      <div className="portfolio-projects">
+        {visibleProjects.map(project=><article
+          className={'portfolio-project'+(selectedProjectSlug===project.slug?' visual-selected-project':'')}
+          key={project.slug} data-cms-project-slug={project.slug}
+          onClick={onEditProject?event=>{event.stopPropagation();onEditProject(project.slug);}:undefined}>
+          {onEditProject&&<button type="button" className="visual-project-edit-action"
+            onClick={event=>{event.stopPropagation();onEditProject(project.slug);}}
+            aria-label={'Edit '+project.client+' portfolio card'}>Edit card ✎</button>}
+          <div className="portfolio-project-top">
+            <span>{project.number} / {project.descriptor}</span><span>{project.date}</span>
+          </div>
+          {project.image&&<img className="cms-project-image" src={project.image}
+            alt={project.client+' website screenshot'} loading="lazy"/>}
+          <a className="portfolio-project-title" href={'/work/'+project.slug}>
+            <h3>{project.client}</h3><span>↗</span>
+          </a>
+          <p>{project.cardSummary??project.title}</p>
+          <div className="portfolio-project-end">
+            <span>{project.cardMetricValue??project.facts[0]?.value}
+              <small>{project.cardMetricLabel??project.facts[0]?.label}</small>
+            </span>
+            <a href={'/work/'+project.slug}>{project.cardLinkLabel||s.linkLabel||'Case study'} ↗</a>
+          </div>
+        </article>)}
+        {visibleProjects.length===0&&<p className="cms-projects-empty">
+          No portfolio cards are visible. Add a case study or show a hidden card in the CMS.
+        </p>}
+      </div>
+      <p className="portfolio-work-caveat">{s.note}</p>
+    </div>;break;
     case 'expertise':content=<div className="portfolio-container"><Heading section={s}/><div className="portfolio-expertise-grid">{s.items?.map((item,i)=><div key={i}><span className="portfolio-expertise-num">{String(i+1).padStart(2,'0')}</span><h3>{item.heading}</h3><p>{item.body}</p></div>)}</div><div className="portfolio-skills">{s.skills?.map((skill,i)=><span key={i}>{skill}</span>)}</div></div>;break;
     case 'about':content=<div className="portfolio-container portfolio-about"><div><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}</h2></div><div className="portfolio-about-copy">{s.paragraphs?.map((p,i)=><p key={i}>{p}</p>)}<Buttons links={s.buttons} style={s.buttonStyle}/></div></div>;break;
     case 'contact':content=<div className="portfolio-container portfolio-contact-inner"><span className="portfolio-kicker">{s.eyebrow}</span><h2>{s.heading}{s.emphasis&&<><br/><em>{s.emphasis}</em></>}</h2><div className="portfolio-contact-bottom"><p>{s.body}</p><Buttons links={s.buttons} style={s.buttonStyle}/></div>{s.email&&<a className="portfolio-contact-email" href={'mailto:'+s.email}>{s.email}</a>}</div>;break;

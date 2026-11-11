@@ -41,6 +41,58 @@ class ContentValidationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate(site)
 
+    def test_section_palette_and_multiline_headings_are_backward_compatible(self):
+        data = copy.deepcopy(STARTER)
+        hero = next(s for s in data['sections'] if s['type']=='hero')
+        hero['heading'] = 'Building better\\nshopping experiences'.replace('\\n','\n')
+        hero['style'].update(background='#17372a', text='#f2f8f2',
+                             accent='#a9dcba', mutedColor='#c2d9c7',
+                             panelColor='#244735', borderColor='#547461')
+        validate(data)
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContentStore(directory + '/cms.sqlite3')
+            saved = store.save(data, 0)
+            self.assertEqual(saved['draft']['sections'][0]['heading'], hero['heading'])
+            self.assertEqual(saved['draft']['sections'][0]['style']['panelColor'], '#244735')
+            self.assertNotEqual(saved['published'], data)
+            self.assertEqual(store.publish(1)['published'], data)
+        for key, invalid in (('panelColor', '#abc'), ('borderColor','not-a-colour')):
+            bad = copy.deepcopy(data)
+            bad['sections'][0]['style'][key] = invalid
+            with self.assertRaises(ValueError):
+                validate(bad)
+
+    def test_portfolio_cards_grid_list_copy_visibility_and_save(self):
+        data = copy.deepcopy(STARTER)
+        section = next(s for s in data['sections'] if s['type']=='projects')
+        section['layout'] = {'view': 'list', 'columns': 0, 'gap': 18}
+        data['projects'][0].update(cardSummary='A succinct case study',
+                                   cardMetricValue='12k+',cardMetricLabel='products listed',
+                                   cardLinkLabel='Explore project',cardVisible=True)
+        data['projects'][1]['cardVisible'] = False
+        validate(data)
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContentStore(directory + '/cms.sqlite3')
+            stored = store.save(data, 0)
+            self.assertEqual(stored['draft']['projects'][0]['cardLinkLabel'], 'Explore project')
+            self.assertEqual(stored['draft']['sections'][data['sections'].index(section)]['layout']['view'], 'list')
+            self.assertNotEqual(stored['published'], data)
+            self.assertEqual(store.publish(1)['published'], data)
+
+    def test_portfolio_card_overrides_validate_safely(self):
+        cases = [
+            lambda d: next(s for s in d['sections'] if s['type']=='projects').update(layout={'view':'table'}),
+            lambda d: next(s for s in d['sections'] if s['type']=='hero').update(layout={'view':'list'}),
+            lambda d: d['projects'][0].update(cardVisible='false'),
+            lambda d: d['projects'][0].update(cardSummary='x'*1201),
+            lambda d: d['projects'][0].update(cardLinkLabel='x'*121),
+            lambda d: d['projects'][0].update(cardUnexpected='unsafe')
+        ]
+        for mutate in cases:
+            data = copy.deepcopy(STARTER)
+            mutate(data)
+            with self.assertRaises(ValueError): validate(data)
+
     def test_granular_typography_and_layout_persist(self):
         site = copy.deepcopy(STARTER)
         stats = next(s for s in site['sections'] if s['type']=='stats')

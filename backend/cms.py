@@ -28,12 +28,15 @@ STYLE_OVERRIDES = {
     'statValueSize': (0, 110), 'statLabelSize': (0, 50),
     'headingColor': 'color', 'bodyColor': 'color', 'eyebrowColor': 'color',
     'emphasisColor': 'color', 'mutedColor': 'color',
+    'panelColor': 'color', 'borderColor': 'color',
 }
 LAYOUT_OVERRIDES = {
     'columns': (0, 12), 'gap': (-1, 160),
     'split': (20, 80), 'copyMaxWidth': (0, 1200),
 }
 LAYOUT_ALIGNS = {'start', 'center', 'end'}
+PROJECT_CARD_FIELDS = {'cardSummary': 1200, 'cardMetricValue': 160,
+                       'cardMetricLabel': 200, 'cardLinkLabel': 120}
 BUTTON_RANGES = {'radius': (0, 48), 'paddingX': (0, 80), 'paddingY': (0, 60), 'gap': (0, 80)}
 BUTTON_COLORS = {'primaryBackground', 'primaryText', 'secondaryBackground', 'secondaryText', 'borderColor'}
 BUTTON_ALIGNMENTS = {'left', 'center', 'right'}
@@ -61,10 +64,13 @@ def check_section_overrides(section):
             raise ValueError(f'Invalid {name}; expected {limits[0]}–{limits[1]}')
     layout = section.get('layout')
     if layout is not None:
-        if not isinstance(layout, dict) or set(layout) - set(LAYOUT_OVERRIDES) - {'verticalAlign'}:
+        if not isinstance(layout, dict) or set(layout) - set(LAYOUT_OVERRIDES) - {'verticalAlign','view'}:
             raise ValueError('Unknown section layout fields')
         for field, value in layout.items():
-            if field == 'verticalAlign':
+            if field == 'view':
+                if section.get('type') != 'projects' or value not in ('grid','list'):
+                    raise ValueError('View must be grid or list for portfolio projects')
+            elif field == 'verticalAlign':
                 if not isinstance(value, str) or value not in LAYOUT_ALIGNS:
                     raise ValueError('Unknown vertical alignment')
             else:
@@ -138,6 +144,14 @@ def validate(document):
                     raise ValueError('Unknown button variant')
             if key in ('sections', 'projects'):
                 extras.discard('image')
+                if key == 'projects':
+                    extras.difference_update(PROJECT_CARD_FIELDS)
+                    extras.discard('cardVisible')
+                    for field, limit in PROJECT_CARD_FIELDS.items():
+                        if field in value and (not isinstance(value[field], str) or len(value[field]) > limit):
+                            raise ValueError(f'{field} must be short text')
+                    if 'cardVisible' in value and type(value['cardVisible']) is not bool:
+                        raise ValueError('cardVisible must be true or false')
                 if key == 'sections':
                     extras.difference_update({'layout', 'anchor', 'buttonStyle'})
                     check_section_overrides(value)
