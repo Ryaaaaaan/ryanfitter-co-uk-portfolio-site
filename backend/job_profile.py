@@ -149,11 +149,16 @@ def profile(title: str, description: str = "", employment: str = "",
     # Explicit office-day counts give a much more useful gradient than treating
     # one day on site the same as five. Unspecified hybrid remains conservative.
     office_day_match = re.search(
-        r"\b([1-5])\s*days?\s*(?:(?:a|per)\s*week\s*)?"
+        r"\b([1-5]|one|two|three|four|five)\s*days?\s*(?:(?:a|per)\s*week\s*)?"
         r"(?:in|at|on)\s*(?:the\s*)?(?:office|site)\b",
         combined, re.I,
     )
-    office_days = int(office_day_match.group(1)) if office_day_match else None
+    office_days = None
+    if office_day_match:
+        token = office_day_match.group(1)
+        office_days = int(token) if token.isdigit() else {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        }.get(token)
     mandatory = office_days is not None or _found(
         combined, r"\b(hybrid|on.site|onsite|office.based|office attendance|"
         r"regular travel|travel required)\b"
