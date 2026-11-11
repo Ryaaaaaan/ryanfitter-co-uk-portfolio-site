@@ -1,0 +1,17 @@
+{
+  "id": "screenshot",
+  "type": "image",
+  "enabled": true,
+  "style": {
+    "background": "",
+    "text": "",
+    "accent": "",
+    "padding": 48,
+    "fontSize": 16,
+    "align": "left"
+  },
+  "heading": "Selected work",
+  "body": "A look at the ecommerce projects and storefronts I've worked on.",
+  "image": "",
+  "caption": "Actual project screenshot — replace with your own upload."
+}
