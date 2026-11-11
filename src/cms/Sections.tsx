@@ -50,6 +50,8 @@ export function PortfolioSection({section:s,site,onEditProject,selectedProjectSl
     '--pf-muted':typography.mutedColor||undefined,
     '--pf-panel':typography.panelColor||undefined,
     '--pf-line':typography.borderColor||undefined,
+    '--cms-section-background':typography.background||undefined,
+    '--cms-section-foreground':typography.text||undefined,
     '--cms-heading-color':typography.headingColor||undefined,
     '--cms-body-color':typography.bodyColor||typography.text||undefined,
     '--cms-eyebrow-color':typography.eyebrowColor||undefined,
