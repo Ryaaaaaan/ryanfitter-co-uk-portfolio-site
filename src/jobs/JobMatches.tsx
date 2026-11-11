@@ -9,6 +9,8 @@ type Match={
  cv_score?:number;lifestyle_score?:number;fit_evidence?:string[];
  remote_status?:string;hours_fit?:string;support_signals?:string[];score_basis?:string;
  engagement_route?:string;uk_eligibility?:string;cross_border_review?:boolean;uk_restricted?:boolean;
+ uk_group?:'uk_listed'|'worldwide'|'unverified'|'restricted';
+ geography_adjustment?:number;source_adjustment?:number;
 };
 type SourceHealth={name:string;status:string;matched:number;detail?:string};
 type Scan={
@@ -21,7 +23,7 @@ type ScanResponse={
  total_saved?:number;total_dismissed?:number;
 };
 type Tab='new'|'saved'|'all';
-type Sort='overall'|'cv'|'lifestyle'|'newest'|'company';
+type Sort='overall'|'uk_first'|'cv'|'lifestyle'|'newest'|'company';
 const empty:ScanResponse={matches:[],scan:null,history:[]};
 const dateLabel=(value:string|null|undefined)=>value?new Date(value).toLocaleString('en-GB',{
  day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'
@@ -40,7 +42,7 @@ export function JobMatches({csrf}:{csrf:string}){
  const [query,setQuery]=useState(''),[tab,setTab]=useState<Tab>('new');
  const [hours,setHours]=useState<'all'|'good'|'other'>('all');
  const [role,setRole]=useState('all'),[seniority,setSeniority]=useState('all');
- const [sort,setSort]=useState<Sort>('overall');
+ const [sort,setSort]=useState<Sort>('uk_first');
  const [source,setSource]=useState('all');
  const [engagement,setEngagement]=useState('all');
  const [ukReview,setUkReview]=useState('all');
@@ -66,6 +68,15 @@ export function JobMatches({csrf}:{csrf:string}){
  const roles=useMemo(()=>Array.from(new Set(result.matches.flatMap(m=>m.role_tags||[]))).sort(),[result.matches]);
  const seniorities=useMemo(()=>Array.from(new Set(result.matches.map(m=>m.seniority||'Not stated'))).sort(),[result.matches]);
  const sources=useMemo(()=>Array.from(new Set(result.matches.map(m=>m.source||'Unknown'))).sort(),[result.matches]);
+ const geographySummary=useMemo(()=>{
+   const rows=result.matches.filter(m=>m.state!=='dismissed');
+   return {
+     uk:rows.filter(m=>m.uk_group==='uk_listed').length,
+     worldwide:rows.filter(m=>m.uk_group==='worldwide').length,
+     unclear:rows.filter(m=>m.uk_group==='unverified').length,
+     himalayas:rows.filter(m=>m.source==='Himalayas').length,
+   };
+ },[result.matches]);
  const matches=useMemo(()=>{
    const filtered=result.matches.filter(m=>{
      if(tab!=='all'&&m.state!==tab)return false;
@@ -75,10 +86,10 @@ export function JobMatches({csrf}:{csrf:string}){
      if(engagement==='contractor'&&m.engagement_route!=='Independent contractor')return false;
      if(engagement==='employment'&&m.engagement_route!=='Employment indicated')return false;
      if(engagement==='other'&&['Independent contractor','Employment indicated'].includes(m.engagement_route||''))return false;
-     if(ukReview==='uk'&&!(m.uk_eligibility||'').startsWith('UK location stated'))return false;
-     if(ukReview==='worldwide'&&!m.cross_border_review)return false;
-     if(ukReview==='unclear'&&(m.uk_eligibility||'').startsWith('UK location stated'))return false;
-     if(ukReview==='restricted'&&!m.uk_restricted)return false;
+     if(ukReview==='uk'&&m.uk_group!=='uk_listed')return false;
+     if(ukReview==='worldwide'&&m.uk_group!=='worldwide')return false;
+     if(ukReview==='unclear'&&m.uk_group!=='unverified')return false;
+     if(ukReview==='restricted'&&m.uk_group!=='restricted')return false;
      if(pay==='stated'&&!m.salary)return false;
      if(pay==='unstated'&&m.salary)return false;
      if((m.cv_score||0)<Number(minCV))return false;
@@ -93,6 +104,12 @@ export function JobMatches({csrf}:{csrf:string}){
    return filtered.sort((a,b)=>{
      if(sort==='company')return a.company.localeCompare(b.company);
      if(sort==='newest')return b.first_seen.localeCompare(a.first_seen);
+     if(sort==='uk_first'){
+       const ranks:{[key:string]:number}={uk_listed:0,worldwide:1,unverified:2,restricted:3};
+       const difference=(ranks[a.uk_group||'unverified']??2)-(ranks[b.uk_group||'unverified']??2);
+       if(difference)return difference;
+       return (b.score||0)-(a.score||0)||b.first_seen.localeCompare(a.first_seen);
+     }
      const get=(m:Match)=>sort==='cv'?m.cv_score??0:sort==='lifestyle'?m.lifestyle_score??0:m.score||0;
      return get(b)-get(a)||b.first_seen.localeCompare(a.first_seen);
    });
@@ -192,7 +209,8 @@ export function JobMatches({csrf}:{csrf:string}){
      </button>)}
     </div>
     <label>Sort by<select value={sort} onChange={e=>setSort(e.target.value as Sort)}>
-      <option value="overall">Best overall match</option>
+      <option value="uk_first">UK-listed roles first</option>
+      <option value="overall">Best overall match (adjusted)</option>
       <option value="cv">Strongest CV match</option>
       <option value="lifestyle">Best working arrangements</option>
       <option value="newest">Recently discovered</option>
@@ -215,9 +233,9 @@ export function JobMatches({csrf}:{csrf:string}){
       <option value="contractor">Contractor / freelance</option><option value="other">Type unconfirmed</option>
     </select></label>
     <label>UK eligibility<select value={ukReview} onChange={e=>setUkReview(e.target.value)}>
-      <option value="all">All locations</option><option value="uk">UK mentioned</option>
-      <option value="worldwide">Worldwide contractor — verify</option>
-      <option value="unclear">UK not explicitly listed</option><option value="restricted">Possible UK restriction</option>
+      <option value="all">All locations</option><option value="uk">UK-listed eligible</option>
+      <option value="worldwide">Worldwide jobs (all types)</option>
+      <option value="unclear">UK eligibility unclear</option><option value="restricted">Possible UK restriction</option>
     </select></label>
     <label>Salary<select value={pay} onChange={e=>setPay(e.target.value)}>
       <option value="all">Any salary info</option><option value="stated">Pay disclosed</option>
@@ -229,11 +247,21 @@ export function JobMatches({csrf}:{csrf:string}){
     </select></label>
     <label>Search<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Company, skill, title…"/></label>
     <button type="button" className="matches-reset-filters" onClick={()=>{
-      setTab('new');setHours('all');setRole('all');setSeniority('all');setSort('overall');
+      setTab('new');setHours('all');setRole('all');setSeniority('all');setSort('uk_first');
       setSource('all');setEngagement('all');setUkReview('all');setPay('all');setMinCV('0');setQuery('');
     }}>Reset filters</button>
   </div>
-  <div className="matches-results-heading"><strong>{matches.length} opportunities</strong><span>Match scores are estimates. Review UK eligibility and contract terms separately.</span></div>
+  <div className="matches-geography-summary" aria-label="Location scope of discovered matches">
+    <strong>Location review</strong>
+    <span>UK-listed: <b>{geographySummary.uk}</b></span>
+    <span>Worldwide: <b>{geographySummary.worldwide}</b></span>
+    <span>Unverified UK scope: <b>{geographySummary.unclear}</b></span>
+    <span>Himalayas results: <b>{geographySummary.himalayas}</b></span>
+    <small>Eligibility is not the same as the employer being based in the UK.</small>
+  </div>
+  <div className="matches-results-heading"><strong>{matches.length} opportunities</strong>
+    <span>Default sorting now puts UK-listed jobs first. Worldwide and unclear roles remain available under the other sort and location options.</span>
+  </div>
   {loading?<p className="jobs-empty">Loading matches…</p>:matches.length===0?<div className="jobs-empty">
     <h3>No matching vacancies</h3><p>Try another filter or run a fresh scan. The board will not invent jobs when sources return none.</p>
   </div>:<div className="matches-list">{matches.map(m=><article key={m.key} className="matches-card">
@@ -251,12 +279,17 @@ export function JobMatches({csrf}:{csrf:string}){
        <span><strong>Hours:</strong> {m.hours_fit||'Not specified'}</span>
        <span><strong>Arrangement:</strong> {m.engagement_route||'Not confirmed'}</span>
        <span><strong>UK suitability:</strong> {m.uk_eligibility||'Confirm with employer'}</span>
+       {m.source==='Himalayas'&&<span><strong>Source check:</strong> Himalayas listings can include worldwide roles even with a GB search; confirm UK employment terms.</span>}
        {(m.support_signals||[]).map(x=><span key={x} className="matches-support-signal">{x}</span>)}
      </div>
      <details className="matches-explanation"><summary>How was this match scored?</summary>
        <p>Based on your CV and the available job title/specification. It's a transparent, rules-based estimate, not an AI review or verification by the employer.</p>
        <ul>{(m.fit_evidence||[]).map((e,i)=><li key={i}>{e}</li>)}</ul>
      </details>
+     {m.uk_group==='worldwide'&&!m.cross_border_review&&<div className="matches-contract-review">
+       <strong>Worldwide remote — UK working terms unconfirmed</strong>
+       <p>This listing may welcome UK applicants, but that does not establish UK payroll, benefits or working-time compatibility. Please confirm with the employer before treating it as a UK role.</p>
+     </div>}
      {m.cross_border_review&&<div className="matches-contract-review">
        <strong>International contractor — review before applying</strong>
        <p>Worldwide remote does not guarantee UK payroll, holiday/sick pay, convenient time zones or agreed payment terms. Confirm whether you would invoice as a UK contractor, how payment works and what hours are expected. This is a possible opportunity, not a verified UK employment match.</p>

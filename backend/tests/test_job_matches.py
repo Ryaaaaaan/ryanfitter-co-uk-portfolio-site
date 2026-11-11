@@ -55,6 +55,36 @@ class MatchStoreTest(unittest.TestCase):
         self.assertIsNone(score_match("Chief Marketing Officer", "Shopify", "Part Time", "20 hours/week", "review"))
         self.assertIsNotNone(match())
 
+    def test_saved_himalayas_matches_are_rescored_without_resetting_state(self):
+        original = normalize({
+            "title": "Ecommerce Marketing Manager",
+            "company": "Worldwide Employer",
+            "apply_url": "https://himalayas.app/companies/employer/jobs/ecommerce",
+            "source": "Himalayas",
+            "location": "Worldwide remote",
+            "employment_type": "Part-time",
+            "hours": "20 hours/week",
+            "description": "Shopify, Akeneo, SEO, email, marketing, merchandising",
+        })
+        self.assertIsNotNone(original)
+        old = {**original, "profile_version": 3, "score": 96}
+        run = self.store.begin()
+        self.store.finish(run, [old], [], 1)
+        self.store.state(old["key"], "saved")
+        visible = self.store.get(old["key"])
+        self.assertEqual(visible["state"], "saved")
+        self.assertEqual(visible["profile_version"], 4)
+        self.assertEqual(visible["uk_group"], "worldwide")
+        self.assertLessEqual(visible["score"], 74)
+        self.assertEqual(len(self.store.list()["matches"]), 4)  # 3 seed jobs + saved match
+        # Re-scoring for display must not overwrite the stored vacancy or
+        # erase a human decision made before the scoring policy changed.
+        with self.store.connect() as db:
+            import json
+            row = db.execute("SELECT data,state FROM job_matches WHERE key=?", (old["key"],)).fetchone()
+            self.assertEqual(json.loads(row["data"])["score"], 96)
+            self.assertEqual(row["state"], "saved")
+
     def test_provider_failure_recorded_without_fabricated_jobs(self):
         with patch("backend.job_matches.himalayas_jobs", side_effect=ValueError("rate limited")), \
              patch("backend.job_matches.remotive_jobs", return_value=[]), \
@@ -99,6 +129,38 @@ class MatchStoreTest(unittest.TestCase):
         self.assertEqual(rows[0]["company"], "Sample UK Remote Shop")
         self.assertEqual(rows[0]["source"], "Jobicy")
         self.assertIn("£20,000", rows[0]["salary"])
+
+    def test_himalayas_gb_eligibility_is_separate_from_worldwide_and_timezone(self):
+        from backend.job_matches import himalayas_jobs
+        now_stamp = int(datetime.now(timezone.utc).timestamp())
+        def job(company, country, zones):
+            return {
+                "title": "Digital Marketing Executive", "companyName": company,
+                "description": "Remote SEO ecommerce and Shopify customer journeys",
+                "applicationLink": "https://himalayas.app/companies/test/jobs/" + company.lower(),
+                "employmentType": "Part Time", "pubDate": now_stamp,
+                "locationRestrictions": country, "timezoneRestrictions": zones,
+            }
+        class Reply:
+            def raise_for_status(self): pass
+            def json(self):
+                return {"jobs":[
+                    job("UKListed", [{"alpha2":"GB"},{"alpha2":"US"}], ["UTC+00:00"]),
+                    job("Worldwide", [], ["UTC-05:00"]),
+                    job("USOnly", [{"alpha2":"US"}], []),
+                ]}
+        with patch("backend.job_matches.SEARCH_TERMS", ("ecommerce",)), \
+             patch("backend.job_matches.requests.get", return_value=Reply()):
+            found = himalayas_jobs()
+        self.assertEqual(len(found), 2)
+        listed, global_job = found
+        self.assertEqual(listed["uk_group"], "uk_listed")
+        self.assertEqual(global_job["uk_group"], "worldwide")
+        self.assertIn("GB listed", listed["location"])
+        self.assertIn("no uk-specific", global_job["uk_eligibility"].lower())
+        self.assertIn("timezone", global_job["warning"].lower())
+        self.assertNotIn("timezone", listed["warning"].lower())
+        self.assertLess(global_job["score"], listed["score"])
 
     def test_remote_uk_country_filter(self):
         date_stamp = int(datetime.now(timezone.utc).timestamp())
