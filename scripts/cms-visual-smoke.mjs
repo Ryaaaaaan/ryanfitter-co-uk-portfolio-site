@@ -8,6 +8,7 @@ import blankSite from '../src/cms/defaults.json' with {type:'json'};
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:900}});
 const json=data=>({status:200,contentType:'application/json',body:JSON.stringify(data)});
+let persistedDraft=structuredClone(blankSite),revision=0,saves=0;
 
 try{
   await page.route('**/admin/api/session',r=>r.fulfill(json({
@@ -15,8 +16,14 @@ try{
     features:{cms:'ready',jobs:'ready',tasks:'planned'}
   })));
   await page.route('**/admin/api/cms',r=>{
-    assert.equal(r.request().method(),'GET','Visual test must never save or publish a draft');
-    return r.fulfill(json({draft:blankSite,revision:0,publishedRevision:0}));
+    const method=r.request().method();
+    if(method==='PUT'){
+      const {document,revision:expected}=r.request().postDataJSON();
+      assert.equal(expected,revision,'Save must use latest revision');
+      persistedDraft=structuredClone(document);
+      revision+=1;saves+=1;
+    }else assert.equal(method,'GET','CMS visual test must never publish');
+    return r.fulfill(json({draft:persistedDraft,revision,publishedRevision:0}));
   });
   await page.route('**/admin/api/media',r=>r.fulfill(json({images:[]})));
   await page.goto('http://127.0.0.1:5173/admin/cms',{waitUntil:'networkidle'});
@@ -61,14 +68,32 @@ try{
   const restored=await stage.boundingBox();
   assert(restored&&restored.width<expanded.width-100,'Sections should reopen');
 
-  // Template changes must be immediately visible and editable, without publishing.
-  await page.locator('.visual-rail-settings button').filter({hasText:'Templates'}).click();
-  await page.getByRole('button',{name:'Use professional portfolio'}).click();
+  // A starter picker belongs ONLY in the sidebar, never on top of the website.
+  assert.equal(await page.locator('.visual-template-chooser').count(),0);
+  assert.equal(await page.locator('.visual-inspector-body').getByText('Choose a starting point').count(),0);
+  assert.equal(await page.locator('.visual-sidebar-templates').count(),1);
+  assert.equal(await page.locator('.visual-sidebar-templates').evaluate(el=>el.open),false);
+  await page.locator('.visual-sidebar-templates summary').click();
+  await page.locator('.visual-sidebar-template-options button').filter({hasText:'Professional portfolio'}).click();
   assert(await page.locator('.visual-preview-section').count()>=6,'Starter blocks did not render');
   await page.locator('.visual-preview-section').first().click();
   const field=page.getByLabel('Heading',{exact:true});
   await field.fill('A properly live preview');
   assert((await page.locator('.portfolio-hero h1').innerText()).includes('A properly live preview'));
+
+  // Save, reload and publish-style rehydration must not bring back a starter prompt.
+  await page.getByRole('button',{name:'Save draft'}).click();
+  assert.equal(saves,1,'Draft should reach the backend mock');
+  await page.reload({waitUntil:'networkidle'});
+  await page.locator('.visual-page-frame').waitFor();
+  assert.equal(await page.locator('.visual-template-chooser').count(),0);
+  assert.equal(await page.locator('.visual-sidebar-templates').evaluate(el=>el.open),false,
+    'Template switcher must stay collapsed after reload');
+  assert.equal(await page.locator('.visual-inspector-body').getByText('Choose a starting point').count(),0);
+  assert((await page.locator('.portfolio-hero h1').innerText()).includes('A properly live preview'),
+    'Saved draft content should survive reload');
+  assert.equal(await page.locator('.visual-inspector-head strong').innerText(),'Hero',
+    'The first saved section should be selected, not Templates');
 
   await page.locator('.visual-rail-page select').selectOption('projects');
   await page.locator('.portfolio-detail').waitFor();
@@ -78,7 +103,7 @@ try{
   await page.setViewportSize({width:700,height:840});
   await page.locator('.visual-mobile-rail').click();
   assert.equal(await page.locator('.visual-cms-rail').isVisible(),true);
-  console.log('CMS browser smoke passed: centred canvas, 4 responsive presets, custom width, panels, live starter, case studies, mobile editing.');
+  console.log('CMS browser smoke passed: centred canvas, responsive presets, sidebar-only templates, save/reload draft persistence, no recurring prompt, case studies and mobile editing.');
 }finally{
   await browser.close();
 }
