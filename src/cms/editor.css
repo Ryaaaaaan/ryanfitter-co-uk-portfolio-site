@@ -63,13 +63,6 @@
 .visual-viewports button[aria-pressed=true]{color:#fff!important;background:#2c624a!important}
 .visual-stage-actions>button{background:#f3f7f4!important;border:1px solid #c9d7ca!important}
 .visual-cms-canvas{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;align-items:center;padding:30px 28px;background:linear-gradient(45deg,#eeeee9 25%,transparent 25%,transparent 75%,#eeeee9 75%,#eeeee9),linear-gradient(45deg,#eeeee9 25%,#f1f0ec 25%,#f1f0ec 75%,#eeeee9 75%,#eeeee9);background-size:25px 25px;background-position:0 0,12.5px 12.5px}
-.visual-template-chooser{align-self:stretch;flex:none;border:1px solid #c9d8ca;background:white;border-radius:9px;padding:16px;margin:0 0 20px;width:100%;max-width:780px}
-.visual-template-chooser strong{font-size:15px;color:#2d4c38}
-.visual-template-chooser p{font-size:11px;color:#66796c;margin:6px 0 13px}
-.visual-template-chooser>div{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.visual-template-chooser button{display:grid;gap:5px;border:1px solid #ccd9ce!important;background:#f7faf7!important;padding:12px!important;text-align:left;border-radius:6px!important}
-.visual-template-chooser button b{font-size:12px}
-.visual-template-chooser button small{font-size:10px;color:#63786a}
 .visual-page-frame{width:var(--cms-live-width);max-width:none;align-self:center;flex:none;min-height:590px;overflow:hidden;border:1px solid #d6dcd6;background:white;box-shadow:0 12px 42px rgba(25,42,30,.12)}
 .visual-page-frame .portfolio.cms-site{min-height:590px}
 .visual-preview-section{position:relative;outline:2px solid transparent;outline-offset:-2px;cursor:pointer;transition:outline-color .13s}
@@ -308,3 +301,17 @@
  .visual-preview-size input[type=number]{width:52px}
  .visual-viewports button{padding:5px!important}
 }
+
+/* Templates are an explicit sidebar action, never a banner above the preview. */
+.visual-sidebar-templates{margin:4px 9px 10px;border:1px solid #d0dfd3;border-radius:7px;background:#f8fbf9;flex:none}
+.visual-sidebar-templates summary{display:flex;align-items:center;gap:8px;padding:10px 11px;color:#35684c;font-size:11px;font-weight:800;list-style:none;cursor:pointer}
+.visual-sidebar-templates summary::-webkit-details-marker{display:none}
+.visual-sidebar-templates summary:after{content:'▾';margin-left:auto;transition:transform .15s}
+.visual-sidebar-templates[open] summary:after{transform:rotate(180deg)}
+.visual-sidebar-templates[open] summary{border-bottom:1px solid #dce8de;background:#edf5ef}
+.visual-sidebar-template-options{display:grid;gap:7px;padding:10px}
+.visual-sidebar-template-options p{font-size:10px;color:#60786a;line-height:1.55;margin:0 0 3px}
+.visual-sidebar-template-options button{display:grid;gap:4px;padding:10px!important;border:1px solid #c7d7ca!important;border-radius:6px!important;background:white!important;color:#265c40!important;text-align:left!important;white-space:normal;min-width:0}
+.visual-sidebar-template-options button:hover{background:#edf5ef!important;border-color:#74a586!important}
+.visual-sidebar-template-options button strong{font-size:11px}
+.visual-sidebar-template-options button small{font-size:10px;font-weight:500;color:#677c6d;line-height:1.4}

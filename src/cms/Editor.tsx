@@ -201,15 +201,22 @@ export function CmsEditor({csrf}:{csrf:string}){
      else setMessage('Image uploaded to your private library. Select it on any section or case study.');
    }catch(e){setError(String(e));}finally{setBusy(false);}
  }
- function receive(s:Snapshot){
+ function receive(s:Snapshot,initialLoad=false){
    setDraft(s.draft);setRevision(s.revision);setPublished(s.publishedRevision);setDirty(false);
+   if(initialLoad){
+     // A fresh visit should open the content, not the Templates chooser.
+     // Save/publish responses never change the user's current selection.
+     setPage('home');
+     setSelected(s.draft.sections.find(section=>section.enabled)?.id
+       ||s.draft.sections[0]?.id||'sections');
+   }
  }
  async function load(){
    setBusy(true);
    try{
      const response=await fetch('/admin/api/cms',{cache:'no-store',credentials:'same-origin'});
      if(!response.ok)throw Error('Unable to load CMS. Check your private login.');
-     receive(await response.json() as Snapshot);setError('');
+     receive(await response.json() as Snapshot,true);setError('');
    }catch(e){setError(String(e));}finally{setBusy(false);}
  }
  useEffect(()=>{void load();void loadMedia();},[]);
@@ -379,11 +386,26 @@ export function CmsEditor({csrf}:{csrf:string}){
           {draft.projects.map(p=><button key={p.slug} className={'visual-section-entry'+(selected==='project:'+p.slug?' active':'')} onClick={()=>select('project:'+p.slug,'projects')}>▦ <span>{p.client}</span></button>)}
           <button className="visual-add-project" onClick={addProject}>+ Add case study</button>
         </>}
+        <p className="visual-rail-caption">PAGE TEMPLATES</p>
+        <details className="visual-sidebar-templates">
+          <summary>▦ <span>Switch page template</span></summary>
+          <div className="visual-sidebar-template-options">
+            <p>Replace your current draft with a starter. Your public site won't change until you publish.</p>
+            <button type="button" onClick={()=>useTemplate(starterSite)}>
+              <strong>Professional portfolio</strong>
+              <small>Hero, case studies, expertise and contact</small>
+            </button>
+            <button type="button" onClick={()=>useTemplate(blankSite)}>
+              <strong>Blank slate</strong>
+              <small>A simple introduction</small>
+            </button>
+          </div>
+        </details>
         <p className="visual-rail-caption">SITE SETTINGS</p>
         <div className="visual-rail-settings">
-          {(['sections','theme','header','footer','projects','metadata','media'] as const).map(key=><button key={key}
+          {(['theme','header','footer','projects','metadata','media'] as const).map(key=><button key={key}
             className={selected===key?'active':''} onClick={()=>{setPage(key==='projects'?'projects':'home');inspect(key);}}>
-            {key==='sections'?'Templates':key==='media'?'Media library':key==='projects'?'Case studies':pretty(key)}
+            {key==='media'?'Media library':key==='projects'?'Case studies':pretty(key)}
           </button>)}
         </div>
       </aside>
@@ -417,12 +439,6 @@ export function CmsEditor({csrf}:{csrf:string}){
           </div>
         </div>
         <div className="visual-cms-canvas" ref={stageRef}>
-          {page==='home'&&selected==='sections'&&<div className="visual-template-chooser">
-            <strong>Start building your website</strong>
-            <p>Load a starter and it will appear immediately in the live preview below. It does not publish your site.</p>
-            <div><button type="button" onClick={()=>useTemplate(starterSite)}><b>Professional portfolio</b><small>Hero, case studies, expertise, about, contact</small></button>
-              <button type="button" onClick={()=>useTemplate(blankSite)}><b>Blank slate</b><small>One simple introduction</small></button></div>
-          </div>}
           <div className={'visual-page-frame '+previewLayout} style={frameStyle}
             onClickCapture={e=>{const target=e.target as HTMLElement;
               if(target.closest('a,button'))e.preventDefault();
@@ -484,10 +500,8 @@ export function CmsEditor({csrf}:{csrf:string}){
         <div className="visual-inspector-head"><div><small>INSPECTOR</small><strong>{selectedTitle}</strong></div><button type="button" className="visual-close-panel" onClick={()=>setInspectorOpen(false)}>Close</button></div>
         <div className="visual-inspector-body" key={selected}>
         {selected==='sections'?<>
-          <h3>Choose a starting point</h3><p>Both templates update the preview instantly and remain private until you publish.</p>
-          <div className="visual-template-buttons"><button onClick={()=>useTemplate(starterSite)}>Use professional portfolio</button>
-            <button onClick={()=>useTemplate(blankSite)}>Use blank slate</button></div>
-          <p className="visual-help">Click any block in the central preview to edit its text and styling. Reorder sections in the left rail. The preview uses the same components as the public site.</p>
+          <h3>No section selected</h3>
+          <p className="visual-help">Select a section in the sidebar or click the preview to edit it. To change your starter, use Page templates in the left sidebar.</p>
         </>:selected==='media'?<>
           <h3>Media library</h3><p>Upload your own screenshots to the private library. Published pages can display selected images.</p>
           <button className="visual-upload-button" onClick={()=>openMedia()}>Open image library / upload</button>
