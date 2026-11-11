@@ -16,6 +16,7 @@ import time
 from datetime import timedelta
 from backend.cms import ContentStore
 from backend.jobs import JobStore
+from backend.uploads import ImageLibrary, published_image_urls
 from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
@@ -66,6 +67,7 @@ def create_app() -> Flask:
 
     store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
 
     app.secret_key = secret
     app.config.update(
@@ -76,7 +78,7 @@ def create_app() -> Flask:
         SESSION_COOKIE_PATH="/",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
         TRUSTED_HOSTS=[parsed_origin.hostname],
-        MAX_CONTENT_LENGTH=1024 * 1024,
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
     )
 
     def signed_in() -> bool:
@@ -210,6 +212,34 @@ def create_app() -> Flask:
         response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
+
+    @app.route("/admin/api/media", methods=["GET", "POST"])
+    def cms_media():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"images": media.list_images()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            uploaded = media.upload(request.files.get("file"))
+            return jsonify(uploaded), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.get("/content/media/<filename>")
+    def public_media(filename):
+        image_path = media.path_for(filename)
+        if image_path is None:
+            abort(404)
+        url = "/content/media/" + filename
+        if not signed_in() and url not in published_image_urls(store.read()["published"]):
+            abort(404)
+        mime = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}[filename.rsplit(".", 1)[1]]
+        response = send_file(image_path, mimetype=mime, conditional=False)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @app.route("/admin/api/jobs", methods=["GET", "POST"])
     def jobs_collection():
