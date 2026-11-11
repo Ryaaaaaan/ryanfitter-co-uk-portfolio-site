@@ -507,3 +507,12 @@ html{scroll-behavior:smooth}
 .portfolio-detail-facts-four>div:nth-child(even){border-right:0}
 .portfolio-detail-facts-four>div:nth-child(-n+2){border-bottom:1px solid var(--pf-line)}
 @media(max-width:600px){.portfolio-detail-facts-four{grid-template-columns:1fr}.portfolio-detail-facts-four>div{border-right:0!important;border-bottom:1px solid var(--pf-line)}.portfolio-detail-facts-four>div:last-child{border-bottom:0}}
+
+/* The visible Case study link also covers the full project card. Keep a single
+   semantic link per card for mouse, touch and keyboard users; the CMS editor
+   retains its own interactive card editing controls. */
+.portfolio-project{position:relative}
+.portfolio-project:not(.visual-editable-project) .portfolio-project-card-link::after{content:"";position:absolute;inset:0;z-index:1}
+.portfolio-project:not(.visual-editable-project):focus-within{outline:3px solid var(--pf-accent);outline-offset:3px}
+.portfolio-project .portfolio-project-card-link:focus-visible{outline:none}
+.portfolio-project.visual-editable-project .portfolio-project-card-link{position:relative;z-index:0}
