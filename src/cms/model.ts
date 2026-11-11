@@ -17,6 +17,7 @@ export type SectionStyle={
   headingSize?:number;headingLineHeight?:number;headingLetterSpacing?:number;headingWeight?:number;
   statValueSize?:number;statLabelSize?:number;
   headingColor?:string;bodyColor?:string;eyebrowColor?:string;emphasisColor?:string;mutedColor?:string;
+  panelColor?:string;borderColor?:string;
 };
 export type SectionLayout={
   /** 0 = automatic columns, following current item count. */
