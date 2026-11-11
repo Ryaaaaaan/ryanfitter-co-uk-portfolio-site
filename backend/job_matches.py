@@ -455,22 +455,147 @@ def jobicy_jobs():
     return results
 
 
+
+def reed_jobs():
+    """Read the official Reed Jobseeker API when the owner's key is configured.
+
+    This intentionally avoids web scraping and restricts search output to
+    listings containing remote/hybrid work evidence.
+    """
+    key = os.environ.get("REED_API_KEY", "").strip()
+    if not key:
+        return []
+    matched = []
+    for term in ("ecommerce", "digital merchandising", "online trading", "UX", "SEO marketing"):
+        r = requests.get(
+            "https://www.reed.co.uk/api/1.0/search",
+            params={"keywords": term, "resultsToTake": 50, "resultsToSkip": 0},
+            auth=(key, ""), timeout=12,
+            headers={"User-Agent": "RyanFitterPrivateJobScout/1.0"},
+        )
+        r.raise_for_status()
+        response = r.json()
+        if not isinstance(response, dict):
+            raise ValueError("Unexpected Reed result format")
+        for job in response.get("results", []):
+            if not isinstance(job, dict):
+                continue
+            desc = plain(job.get("jobDescription", ""))
+            location = plain(job.get("locationName", ""))
+            # Unlike the remote-only feeds, Reed lists both onsite and remote
+            # work. Only retain jobs with remote / hybrid listing evidence.
+            if not re.search(r"\b(remote|work.from.home|home.based|hybrid|wfh)\b",
+                             (location + " " + desc).lower()):
+                continue
+            url = job.get("jobUrl")
+            if not valid_link(url):
+                continue
+            minimum, maximum = job.get("minimumSalary"), job.get("maximumSalary")
+            salary_values = [f"£{x:,.0f}" for x in (minimum, maximum)
+                             if isinstance(x, (int,float))]
+            salary = "–".join(salary_values)
+            item = normalize({
+                "title": job.get("jobTitle", ""), "company": job.get("employerName", ""),
+                "apply_url": url, "description": desc, "source": "Reed",
+                "employment_type": "Part-time" if job.get("partTime") else "Full-time" if job.get("fullTime") else "",
+                "location": location, "salary": salary,
+                "posted": str(job.get("date", ""))[:10], "confidence": "review",
+                "warning": "Reed role mentions remote/hybrid work. Confirm zero required office attendance, UK eligibility and hours."
+            })
+            if item:
+                matched.append(item)
+    return matched
+
+
+def adzuna_jobs():
+    """Search the UK jobs API if the owner configures Adzuna personal-search credentials."""
+    app_id = os.environ.get("ADZUNA_APP_ID", "").strip()
+    app_key = os.environ.get("ADZUNA_APP_KEY", "").strip()
+    if not (app_id and app_key):
+        return []
+    matched = []
+    for term in ("remote ecommerce", "remote digital marketing", "remote UX", "remote merchandising"):
+        r = requests.get(
+            "https://api.adzuna.com/v1/api/jobs/gb/search/1",
+            params={"app_id": app_id, "app_key": app_key, "results_per_page": 50,
+                    "max_days_old": 30, "sort_by": "date", "what": term},
+            timeout=12, headers={"User-Agent": "RyanFitterPrivateJobScout/1.0"},
+        )
+        r.raise_for_status()
+        response = r.json()
+        if not isinstance(response, dict):
+            raise ValueError("Unexpected Adzuna result format")
+        for job in response.get("results", []):
+            if not isinstance(job, dict):
+                continue
+            desc = plain(job.get("description", ""))
+            title = plain(job.get("title", ""))
+            location = plain((job.get("location") or {}).get("display_name", ""))
+            if not re.search(r"\b(remote|work.from.home|home.based|hybrid|wfh)\b",
+                             (title + " " + desc + " " + location).lower()):
+                continue
+            salary_values = [f"£{x:,.0f}" for x in
+                             (job.get("salary_min"), job.get("salary_max"))
+                             if isinstance(x, (int,float))]
+            item = normalize({
+                "title": title, "company": (job.get("company") or {}).get("display_name", ""),
+                "apply_url": job.get("redirect_url", ""), "description": desc,
+                "source": "Adzuna", "employment_type": "Contract" if job.get("contract") else "",
+                "location": location, "salary": "–".join(salary_values),
+                "posted": str(job.get("created", ""))[:10], "confidence": "review",
+                "warning": "Adzuna search contains remote/hybrid terms. Confirm the employer's actual attendance requirements."
+            })
+            if item:
+                matched.append(item)
+    return matched
+
+
+def source_registry():
+    return (
+        ("Himalayas", himalayas_jobs, True),
+        ("Remotive", remotive_jobs, True),
+        ("Jobicy", jobicy_jobs, True),
+        ("Reed", reed_jobs, bool(os.environ.get("REED_API_KEY"))),
+        ("Adzuna", adzuna_jobs,
+         bool(os.environ.get("ADZUNA_APP_ID") and os.environ.get("ADZUNA_APP_KEY"))),
+    )
+
+
 def scan(store, run_id=None):
     # Claims across workers and scheduled SSM invocations use a transactional lock.
     if run_id is None:
         run_id = store.begin()
     errors = []
     sources_ok = 0
+    source_details = []
     matched = {}
-    for label, operation in (("Himalayas", himalayas_jobs), ("Remotive", remotive_jobs), ("Jobicy", jobicy_jobs)):
+    for label, operation, configured in source_registry():
+        if not configured:
+            source_details.append({
+                "name": label, "status": "not_configured", "matched": 0,
+                "detail": "Requires the owner's developer API credentials.",
+            })
+            continue
         try:
             rows = operation()
             sources_ok += 1
+            source_details.append({
+                "name": label, "status": "success", "matched": len(rows), "detail": "",
+            })
             for item in rows:
                 current = matched.get(item["key"])
                 if not current or item["score"] > current["score"]:
                     matched[item["key"]] = item
         except (requests.RequestException, ValueError, KeyError, TypeError) as error:
-            errors.append(f"{label}: {type(error).__name__}: {str(error)[:120]}")
-    result = store.finish(run_id, list(matched.values()), errors, sources_ok)
+            # Never expose exception strings: URL query parameters can contain
+            # Adzuna API credentials; errors appear in the user's scan history.
+            detail = type(error).__name__
+            if isinstance(error, requests.HTTPError) and error.response is not None:
+                detail += " (HTTP " + str(error.response.status_code) + ")"
+            source_details.append({
+                "name": label, "status": "failed", "matched": 0, "detail": detail,
+            })
+            errors.append(f"{label}: {detail}")
+    result = store.finish(run_id, list(matched.values()), errors, sources_ok,
+                          source_details=source_details)
     return result
