@@ -243,7 +243,7 @@ try{
   assert.equal(await page.locator('.visual-cms-rail').isVisible(),true);
   // Private Work board must be accessible from the overview, not "SOON".
   let workTasks=[];
-  await page.route('**/admin/api/tasks',r=>{
+  const handleTaskRoute=r=>{
     const method=r.request().method();
     if(method==='POST'){
       const item=r.request().postDataJSON();
@@ -257,7 +257,9 @@ try{
       return r.fulfill(json({task:workTasks[0]}));
     }
     return r.fulfill(json({tasks:workTasks}));
-  });
+  };
+  await page.route('**/admin/api/tasks/*',handleTaskRoute);
+  await page.route('**/admin/api/tasks',handleTaskRoute);
   await page.route('**/admin/api/jobs',r=>r.fulfill(json({jobs:[]})));
   const worldContract={
     key:'global-test',company:'Motu Novu Test',title:'Jr E-Commerce Assistant',score:74,
