@@ -350,3 +350,62 @@
 .visual-link-field select{background:#f6faf6!important;border-color:#adc8b3!important}
 .visual-link-field small{font-weight:500;line-height:1.45;color:#5b7262}
 .visual-inspector-help{font-size:11px;color:#627568;line-height:1.55;margin:13px 0 17px}
+
+/* Project cards are individually selectable in the private live preview. */
+.visual-page-frame .cms-section-projects .portfolio-project{position:relative}
+.visual-page-frame .cms-section-projects .portfolio-project:has(.visual-project-edit-action){
+  cursor:pointer;
+}
+.visual-page-frame .cms-section-projects .portfolio-project.visual-selected-project{
+  outline:2px solid #277650;
+  outline-offset:-2px;
+  box-shadow:0 0 0 2px #2674522a;
+}
+.visual-project-edit-action{
+  position:absolute;top:9px;right:10px;z-index:3;
+  border:1px solid #98c2a7!important;border-radius:5px!important;
+  padding:6px 9px!important;background:#e9f5ed!important;
+  color:#1e6946!important;font-size:10px!important;font-weight:800!important;
+  opacity:0;transition:opacity .12s;
+}
+.visual-page-frame .portfolio-project:hover .visual-project-edit-action,
+.visual-page-frame .portfolio-project:focus-within .visual-project-edit-action,
+.visual-page-frame .portfolio-project.visual-selected-project .visual-project-edit-action{
+  opacity:1;
+}
+.visual-portfolio-card-manager,.visual-card-editor{display:grid;gap:10px}
+.visual-portfolio-card-manager{
+  padding:12px 11px;margin-bottom:16px;
+  background:#f4f9f4;border:1px solid #d1e1d5;border-radius:8px;
+}
+.visual-portfolio-card-manager>strong{font-size:13px;color:#275f42}
+.visual-portfolio-card-manager>p,
+.visual-portfolio-card-manager>small{margin:0;font-size:11px;color:#5d7261;line-height:1.5}
+.visual-card-layout-toggle{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.visual-card-layout-toggle button{
+  border:1px solid #c6daca!important;border-radius:6px!important;background:white!important;
+  color:#325b41!important;padding:10px 8px!important;font-size:12px!important;font-weight:800!important;
+}
+.visual-card-layout-toggle button[aria-pressed=true]{
+  background:#246f4b!important;color:#fff!important;border-color:#246f4b!important;
+}
+.visual-portfolio-card-list{display:grid;gap:4px;margin:3px 0}
+.visual-portfolio-card-row{display:flex;align-items:center;gap:4px}
+.visual-portfolio-card-row button{
+  border:1px solid #d1ded4!important;border-radius:5px!important;background:white!important;
+  color:#365b41!important;padding:6px 8px!important;font-size:11px!important;
+}
+.visual-portfolio-card-row .visual-card-select{text-align:left;flex:1;min-width:0}
+.visual-card-select small{display:block;font-size:10px;color:#a36e35}
+.visual-card-editor{gap:6px}
+.visual-card-editor .visual-back-button{
+  padding:10px!important;background:#edf5ee!important;color:#246b47!important;
+  border:1px solid #bed9c7!important;border-radius:5px!important;text-align:left!important;
+}
+.visual-card-editor-actions{display:grid;gap:6px;margin:16px 0}
+.visual-card-editor-actions button{
+  padding:10px!important;border:1px solid #bcd1c1!important;
+  border-radius:6px!important;background:white!important;color:#246147!important;
+  text-align:left!important;font-size:11px!important;font-weight:800!important;
+}
+.visual-card-editor .visual-field textarea{min-height:84px}
