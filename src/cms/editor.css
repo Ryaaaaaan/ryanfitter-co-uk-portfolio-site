@@ -339,3 +339,14 @@
 .visual-page-frame.mobile .cms-section .portfolio-about,
 .visual-page-frame.mobile .cms-section .cms-image-text{grid-template-columns:1fr}
 .visual-page-frame.mobile .cms-section.cms-custom-heading-size :is(h1,h2,h3){font-size:var(--cms-heading-size)}
+
+/* Inline anchor editor + destination picker — keeps page links discoverable. */
+.visual-anchor-controls{display:grid;gap:7px;margin:0 0 16px;padding:12px;border:1px solid #cbdccc;background:#f4f9f5;border-radius:7px}
+.visual-anchor-controls label{font-size:11px;font-weight:850;color:#24573f}
+.visual-anchor-controls small{font-size:10px;line-height:1.45;color:#54705c}
+.visual-anchor-input{display:flex;align-items:center;border:1px solid #b7cfbd;border-radius:6px;background:white;overflow:hidden}
+.visual-anchor-input span{padding:9px 10px;color:#3c7b55;background:#e9f2ea;font-weight:850;border-right:1px solid #b7cfbd}
+.visual-anchor-input input{width:100%;min-width:0;padding:9px 10px!important;border:0!important;background:white;color:#163624!important;font-size:12px!important}
+.visual-link-field select{background:#f6faf6!important;border-color:#adc8b3!important}
+.visual-link-field small{font-weight:500;line-height:1.45;color:#5b7262}
+.visual-inspector-help{font-size:11px;color:#627568;line-height:1.55;margin:13px 0 17px}
