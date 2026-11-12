@@ -138,6 +138,10 @@ def validate(document):
             extras = set(value) - set(template)
             if key == 'style':
                 extras.difference_update(STYLE_OVERRIDES)
+            if key == 'layout':
+                # Validated strictly by check_section_overrides on the parent.
+                # These optional overrides may be absent from saved section templates.
+                extras.difference_update(set(LAYOUT_OVERRIDES) | {'view', 'verticalAlign'})
             if key in ('links', 'buttons'):
                 extras.discard('variant')
                 if 'variant' in value and value['variant'] not in BUTTON_VARIANTS:
