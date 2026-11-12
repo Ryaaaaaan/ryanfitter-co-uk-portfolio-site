@@ -49,5 +49,5 @@ with open(output, "w", encoding="utf-8") as stream:
 PY
 chmod 0644 "$STATUS_TMP"
 mv -f -- "$STATUS_TMP" "$PUBLIC/deployment-status.json"
-printf '%s\\n' "$REVISION" > /var/lib/ryanfitter-admin/deployed-revision
+printf '%s\n' "$REVISION" > /var/lib/ryanfitter-admin/deployed-revision
 echo "DEPLOY_INSTALLED_REVISION: $REVISION (run $RUN_ID, attempt $RUN_ATTEMPT)"
