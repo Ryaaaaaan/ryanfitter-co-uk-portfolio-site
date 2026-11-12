@@ -293,9 +293,10 @@ try{
   const deployment=page.getByRole('region',{name:'Production deployment'});
   await deployment.getByRole('heading',{name:'Deployment verification'}).waitFor();
   await deployment.getByText('Not reported').waitFor();
-  await deployment.getByRole('button',{name:'Recheck deployment'}).click();
-  await page.waitForFunction(() => performance.getEntriesByType('resource')
-    .filter(entry => entry.name.includes('deployment-status.json')).length>=2);
+  await Promise.all([
+    page.waitForResponse(response=>response.url().includes('deployment-status.json') && response.status()===404),
+    deployment.getByRole('button',{name:'Recheck deployment'}).click()
+  ]);
   assert(deploymentChecks>=2,'Refreshing deployment status must issue a new request');
   assert.equal(await page.getByRole('link',{name:/Work board/}).count(),2,
     'Overview and sidebar should both link to the ready Work board');
