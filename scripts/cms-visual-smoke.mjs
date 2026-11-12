@@ -284,7 +284,19 @@ try{
     matches:[worldContract,ukListed],scan:null,history:[]
   })));
   await page.setViewportSize({width:1400,height:850});
+  let deploymentChecks=0;
+  await page.route('**/deployment-status.json*',route=>{
+    deploymentChecks++;
+    return route.fulfill({status:404,body:'No production status in local preview'});
+  });
   await page.goto('http://127.0.0.1:5173/admin',{waitUntil:'networkidle'});
+  const deployment=page.getByRole('region',{name:'Production deployment'});
+  await deployment.getByRole('heading',{name:'Deployment verification'}).waitFor();
+  await deployment.getByText('Not reported').waitFor();
+  await deployment.getByRole('button',{name:'Recheck deployment'}).click();
+  await page.waitForFunction(() => performance.getEntriesByType('resource')
+    .filter(entry => entry.name.includes('deployment-status.json')).length>=2);
+  assert(deploymentChecks>=2,'Refreshing deployment status must issue a new request');
   assert.equal(await page.getByRole('link',{name:/Work board/}).count(),2,
     'Overview and sidebar should both link to the ready Work board');
   assert.equal(await page.getByText('Build your website.').count(),0,
