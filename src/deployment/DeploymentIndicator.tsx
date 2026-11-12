@@ -48,11 +48,15 @@ export function DeploymentIndicator() {
 
   const record = result.record;
   const built = fullSha(BUILD_SHA);
-  const matches = result.state === "ready" && record && built && record.revision === BUILD_SHA;
-  const mismatch = result.state === "ready" && record && built && record.revision !== BUILD_SHA;
+  const htmlSha = document.querySelector('meta[name="site-build-revision"]')?.getAttribute("content") || "";
+  const htmlStamped = fullSha(htmlSha);
+  const matches = result.state === "ready" && record && built && htmlStamped &&
+    record.revision === BUILD_SHA && htmlSha === BUILD_SHA;
+  const mismatch = result.state === "ready" && record && built && htmlStamped &&
+    (record.revision !== BUILD_SHA || htmlSha !== BUILD_SHA);
   const state = result.state === "loading" ? "Checking…" :
     result.state !== "ready" ? "Not reported" :
-    !built ? "Build not stamped" : matches ? "Versions match" : "Version mismatch";
+    !built || !htmlStamped ? "Build not stamped" : matches ? "Versions match" : "Version mismatch";
   const date = record ? new Date(record.deployed_at).toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
     timeZone: "Europe/London", timeZoneName: "short",
