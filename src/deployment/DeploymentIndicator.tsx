@@ -19,7 +19,7 @@ function isDeploymentRecord(value: unknown): value is DeploymentRecord {
     typeof record.revision === "string" && fullSha(record.revision) &&
     typeof record.deployed_at === "string" && !Number.isNaN(Date.parse(record.deployed_at)) &&
     typeof record.run_id === "string" && /^[0-9]+$/.test(record.run_id) &&
-    Number.isInteger(record.run_attempt) && Number(record.run_attempt) > 0;
+    typeof record.run_attempt === "number" && Number.isInteger(record.run_attempt) && record.run_attempt > 0;
 }
 
 /** Version agreement is not the same as GitHub Actions success or application uptime. */
