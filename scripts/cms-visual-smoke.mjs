@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import blankSite from '../src/cms/defaults.json' with {type:'json'};
+import starterSite from '../src/cms/starter.json' with {type:'json'};
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:900}});
@@ -191,7 +192,8 @@ try{
   await page.locator('.visual-rail-section').filter({hasText:'Real work. Real retail.'})
     .locator('.visual-rail-select').click();
   const gallery=page.locator('.cms-section-projects');
-  assert.equal(await gallery.locator('.portfolio-project').count(),3);
+  const starterCardCount=starterSite.projects.length;
+  assert.equal(await gallery.locator('.portfolio-project').count(),starterCardCount);
   await page.getByRole('button',{name:'☰ List'}).click();
   assert(await gallery.evaluate(el=>el.classList.contains('cms-projects-list')),
     'List mode must change the rendered portfolio section');
@@ -210,10 +212,10 @@ try{
   assert((await gallery.locator('.portfolio-project').first().innerText()).includes('12,345'));
   assert((await gallery.locator('.portfolio-project').first().innerText()).includes('See the work'));
   await page.getByRole('checkbox',{name:'Show this card on the homepage'}).uncheck();
-  assert.equal(await gallery.locator('.portfolio-project').count(),2,
+  assert.equal(await gallery.locator('.portfolio-project').count(),starterCardCount-1,
     'Hidden homepage card must not delete the case study');
   await page.getByRole('checkbox',{name:'Show this card on the homepage'}).check();
-  assert.equal(await gallery.locator('.portfolio-project').count(),3);
+  assert.equal(await gallery.locator('.portfolio-project').count(),starterCardCount);
   await page.getByRole('button',{name:'← Portfolio layout & card order'}).click();
   await page.getByRole('button',{name:'▦ Grid'}).click();
   assert(!await gallery.evaluate(el=>el.classList.contains('cms-projects-list')));
@@ -227,7 +229,7 @@ try{
   assert(await restoredGallery.evaluate(el=>el.classList.contains('cms-projects-list')),
     'Saved list layout must survive reload');
   assert((await restoredGallery.locator('.portfolio-project').first().innerText()).includes('Edited only for this homepage card.'));
-  assert.equal(await restoredGallery.locator('.portfolio-project').count(),3);
+  assert.equal(await restoredGallery.locator('.portfolio-project').count(),starterCardCount);
   await restoredGallery.locator('[data-cms-project-slug="loftycards"]').click();
   await page.getByRole('button',{name:'Edit full case-study page ↗'}).click();
   await page.locator('.portfolio-detail').waitFor();
