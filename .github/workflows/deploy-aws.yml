@@ -42,9 +42,10 @@ jobs:
       - name: Verify build and backend before contacting AWS
         run: |
           npm ci --no-audit --no-fund
-          npm run build
+          VITE_BUILD_SHA="$DEPLOY_SHA" npm run build
           python -m pip install -r backend/requirements.txt
           python -m unittest discover -s backend/tests -v
+          python -m unittest discover -s deploy -p 'test_*.py' -v
           bash -n deploy/install-cms.sh deploy/github-remote.sh
       - name: Show non-secret deployment identity claims
         run: |
@@ -67,9 +68,15 @@ jobs:
           role-session-name: personal-site-${{ github.run_id }}
           role-duration-seconds: 3600
       - name: Deploy through Systems Manager and collect result
+        id: deploy
         run: python deploy/send-deployment.py
-      - name: Verify public authentication boundaries and tools
+      - name: Explain superseded deployment
+        if: steps.deploy.outputs.superseded == 'true'
+        run: echo 'Superseded by a newer main commit; install and exact-revision verification intentionally skipped.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify live Git SHA, run identity and public security boundaries
+        if: steps.deploy.outputs.superseded != 'true'
         run: |
+          python deploy/verify_deployment.py
           python - <<'PY'
           import urllib.request, urllib.error, json
           class NoRedirect(urllib.request.HTTPRedirectHandler):
