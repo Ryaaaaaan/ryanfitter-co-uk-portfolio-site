@@ -48,10 +48,10 @@ while time.monotonic() < deadline:
                     output.write('superseded=' + ('true' if skipped else 'false') + '\n')
             if skipped:
                 print('Deployment skipped: newer main revision exists. No verification for old run.')
-            elif 'DEPLOY_INSTALLED_REVISION: ' + revision not in stdout:
-                raise SystemExit('SSM succeeded but did not confirm installed revision')
             else:
-                print('Website install completed; public verification still required.')
+                # The externally fetched marker and HTML are authoritative.
+                # SSM's stdout is length-limited and may omit the final echo.
+                print('SSM finished; exact external revision verification still required.')
             break
     time.sleep(5)
 else:
