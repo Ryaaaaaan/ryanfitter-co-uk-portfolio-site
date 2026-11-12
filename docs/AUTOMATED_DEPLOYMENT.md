@@ -58,3 +58,46 @@ If AWS denies the initial setup, the account operator needs the CloudFormation
 stack create/update/change-set permissions and IAM role/inline-policy management
 for RyanFitterPortfolioGitHubDeploy, plus read access to the existing OIDC provider.
 Do not grant these provisioning permissions to the GitHub deployment role itself.
+
+## Production revision verification
+
+The existing GitHub Actions → OIDC → SSM pipeline now records an **exact deployment
+identity**; it does not grant any additional AWS permissions. The deploy
+script passes the full immutable commit SHA, GitHub run ID and run attempt to
+the EC2 host. The host builds Vite with `VITE_BUILD_SHA`, installs and performs
+local auth/route checks using the existing rollback-capable installer, then
+atomically writes a minimal `/deployment-status.json` containing:
+
+- `schema_version` (1), `revision` (40-character Git commit), `deployed_at`
+  (UTC ISO-8601), `run_id`, and `run_attempt`.
+
+The public metadata contains no account identifier, user details, credentials
+or internal host paths. Nginx explicitly serves it as no-store JSON and
+returns 404 when missing rather than silently serving the SPA HTML. The public
+homepage's `site-build-revision` meta tag is stamped by Vite from the same
+commit SHA. The workflow only reports deployment verified if a fresh HTTPS
+request confirms *both* the marker and homepage HTML match its exact commit,
+run ID and attempt. An unchanged stale marker cannot make a rerun appear
+successful. Existing anonymous Cognito-route and Pokémon/Trading Lab smoke
+checks remain in place.
+
+An older deployment that is superseded by a new `main` commit exits without
+installing and is marked as **superseded** in GitHub Actions; it does not
+incorrectly claim a successful revision verification.
+
+The authenticated `/admin` overview displays the server's reported revision,
+the build loaded by the browser and the install timestamp. **Versions match**
+means those two identities agree, not that all external services are healthy or
+that GitHub Actions passed every subsequent step. The linked Actions run is
+the source for final job status. If status is missing, check the latest Actions
+run; older/manual installs will show **Not reported** until this deployment
+pipeline has published a marker. Browser tabs using older cached JavaScript may
+show **Version mismatch** until refreshed.
+
+To validate without AWS access, run:
+```bash
+python -m unittest discover -s deploy -p 'test_*.py' -v
+```
+The workflow itself invokes `python deploy/verify_deployment.py` after SSM
+completes. The validator exits nonzero on stale/missing markers, wrong run
+identity, incorrect HTML build SHA, malformed timestamps or HTTP errors.
