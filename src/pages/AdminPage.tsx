@@ -6,6 +6,7 @@ import {JobMatches} from "../jobs/JobMatches";
 import {CvLibrary} from "../jobs/CvLibrary";
 import {InterviewCalendar} from "../jobs/InterviewCalendar";
 import {WorkBoard} from "../jobs/WorkBoard";
+import {DeploymentIndicator} from "../deployment/DeploymentIndicator";
 
 type Session = {
   authenticated: boolean;
@@ -113,6 +114,7 @@ export function AdminPage(){
             <div><strong>{counts?.applications??'—'}</strong><span>Applications saved</span></div>
             <div><strong>{counts?.tasks??'—'}</strong><span>Tasks still open</span></div>
           </div>
+          <DeploymentIndicator/>
           <div className="admin-shortcuts" aria-label="Workspace shortcuts">
             {modules.map(module=><a href={module.url} className="admin-shortcut" key={module.name}>
               <span className="admin-shortcut-icon" aria-hidden="true">{module.icon}</span>
