@@ -6,7 +6,7 @@ SOURCE=$(realpath "${1:?Provide the built checkout path}")
 RUNTIME=/opt/ryanfitter-portfolio
 PUBLIC=/var/www/ryanfitter/html
 [[ "$SOURCE" != "$RUNTIME" ]] || { echo 'Use a separate checkout so the old runtime can be backed up.'; exit 1; }
-[[ -f "$SOURCE/dist/index.html" && -f "$SOURCE/backend/cms.py" && -f /etc/ryanfitter-admin.env ]]
+[[ -f "$SOURCE/dist/index.html" && -f "$SOURCE/dist/review/dixiescolne/index.html" && -f "$SOURCE/backend/cms.py" && -f /etc/ryanfitter-admin.env ]]
 grep -Fq 'include /etc/nginx/snippets/ryanfitter-admin.conf;' /etc/nginx/sites-enabled/ryanfitter
 "$RUNTIME/.venv/bin/python" -c 'import flask,jwt,requests,gunicorn'
 # The tests use disposable configuration and databases, never the live env file.
@@ -15,6 +15,9 @@ BACKUP="/var/backups/ryanfitter-cms-$(date -u +%Y%m%dT%H%M%SZ)"
 install -d -m 0700 "$BACKUP"
 tar -czf "$BACKUP/runtime.tar.gz" -C "$RUNTIME" backend src deploy dist
 cp -a "$PUBLIC/index.html" "$BACKUP/public-index.html"
+if [[ -f "$PUBLIC/review/dixiescolne/index.html" ]]; then
+  cp -a "$PUBLIC/review/dixiescolne/index.html" "$BACKUP/dixies-review-index.html"
+fi
 for name in robots.txt sitemap.xml; do
   [[ ! -f "$PUBLIC/$name" ]] || cp -a "$PUBLIC/$name" "$BACKUP/public-$name"
 done
@@ -42,6 +45,12 @@ rollback(){
   echo "Deployment failed; restoring runtime and routing from $BACKUP" >&2
   tar -xzf "$BACKUP/runtime.tar.gz" -C "$RUNTIME"
   cp -a "$BACKUP/public-index.html" "$PUBLIC/index.html"
+  if [[ -f "$BACKUP/dixies-review-index.html" ]]; then
+    install -d -m 0755 "$PUBLIC/review/dixiescolne"
+    cp -a "$BACKUP/dixies-review-index.html" "$PUBLIC/review/dixiescolne/index.html"
+  else
+    rm -f -- "$PUBLIC/review/dixiescolne/index.html"
+  fi
   for name in robots.txt sitemap.xml; do
     [[ ! -f "$BACKUP/public-$name" ]] || cp -a "$BACKUP/public-$name" "$PUBLIC/$name"
   done
@@ -74,6 +83,11 @@ done
 # New assets are added first; old assets stay available for existing browser tabs.
 cp -R "$SOURCE/dist/assets/." "$PUBLIC/assets/"
 chmod -R a+rX "$PUBLIC/assets"
+# Publish the isolated Dixy\x27s review page. Vite leaves it in dist/review/;
+# do not let the SPA fallback silently serve the portfolio homepage instead.
+install -d -m 0755 "$PUBLIC/review/dixiescolne"
+install -m 0644 "$SOURCE/dist/review/dixiescolne/index.html" "$PUBLIC/review/dixiescolne/.index.next"
+mv -f -- "$PUBLIC/review/dixiescolne/.index.next" "$PUBLIC/review/dixiescolne/index.html"
 systemctl reload nginx
 CURL=(curl --resolve ryanfitter.co.uk:443:127.0.0.1 -sS)
 [[ "$("${CURL[@]}" -o /dev/null -w '%{http_code}' https://ryanfitter.co.uk/admin)" == 302 ]]
@@ -97,6 +111,9 @@ install -m 0644 "$SOURCE/dist/index.html" "$PUBLIC/.cms-index.next"
 mv "$PUBLIC/.cms-index.next" "$PUBLIC/index.html"
 "${CURL[@]}" --fail -o /dev/null https://ryanfitter.co.uk/
 "${CURL[@]}" --fail -o /dev/null https://ryanfitter.co.uk/pokemon
+# Verify exact HTML, not merely HTTP 200 (which the SPA fallback also returns).
+"${CURL[@]}" --fail https://ryanfitter.co.uk/review/dixiescolne/ -o "$BACKUP/dixies-review-smoke.html"
+cmp -s "$SOURCE/dist/review/dixiescolne/index.html" "$BACKUP/dixies-review-smoke.html"
 trap - ERR
 echo "CMS deployed. Backup: $BACKUP"
 echo 'Open https://ryanfitter.co.uk/admin/cms to edit and publish.'
