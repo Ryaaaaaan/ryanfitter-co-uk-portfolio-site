@@ -6,6 +6,7 @@ import {JobMatches} from "../jobs/JobMatches";
 import {CvLibrary} from "../jobs/CvLibrary";
 import {InterviewCalendar} from "../jobs/InterviewCalendar";
 import {WorkBoard} from "../jobs/WorkBoard";
+import {FreelanceProjects} from "../jobs/FreelanceProjects";
 import {ProjectPortfolio} from "../jobs/ProjectPortfolio";
 import {DeploymentIndicator} from "../deployment/DeploymentIndicator";
 
@@ -49,6 +50,7 @@ export function AdminPage(){
   const cms=window.location.pathname.replace(/\/+$/, "")==="/admin/cms";
   const tasks=window.location.pathname.replace(/\/+$/, "")==="/admin/tasks";
   const projects=window.location.pathname.replace(/\/+$/, "")==="/admin/projects";
+  const freelance=window.location.pathname.replace(/\/+$/, "")==="/admin/freelance";
   const [counts,setCounts]=useState<{matches:number;applications:number;tasks:number}|null>(null);
   useEffect(()=>{
     if(window.location.pathname.replace(/\/+$/,'')!=='/admin'||status!=='ready')return;
@@ -78,13 +80,14 @@ export function AdminPage(){
         <a href="/" className="admin-brand">ryan<span>.</span>fitter <small>WORKSPACE</small></a>
         <div className="admin-sidebar-label">WORKSPACE</div>
         <nav aria-label="Dashboard navigation">
-          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks&&!projects&&!projects?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks?"page":undefined}>Overview</a>
+          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks&&!projects&&!freelance?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks?"page":undefined}>Overview</a>
           <a href="/admin/job-matches" className={matches?"admin-nav-active":""} aria-current={matches?"page":undefined}>Job matches</a>
           <a href="/admin/jobs" className={jobs?"admin-nav-active":""} aria-current={jobs?"page":undefined}>Applications</a>
           <a href="/admin/interviews" className={calendar?"admin-nav-active":""} aria-current={calendar?"page":undefined}>Interview calendar</a>
           <a href="/admin/cvs" className={cvs?"admin-nav-active":""} aria-current={cvs?"page":undefined}>My CVs</a>
           <a href="/admin/projects" className={projects?"admin-nav-active":""} aria-current={projects?"page":undefined}>Projects</a>
           <a href="/admin/tasks" className={tasks?"admin-nav-active":""} aria-current={tasks?"page":undefined}>Work board</a>
+          <a href="/admin/freelance" className={freelance?"admin-nav-active":""} aria-current={freelance?"page":undefined}>Freelance projects</a>
           <a href="/admin/cms" className={cms?"admin-nav-active":""} aria-current={cms?"page":undefined}>Portfolio CMS</a>
         </nav>
         <div className="admin-sidebar-bottom">
@@ -101,11 +104,11 @@ export function AdminPage(){
       </aside>
       <main className={"admin-main"+(cms?" admin-main-cms":"")} id="main">
         <div className="admin-heading">
-          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":tasks?"Work board":projects?"Projects":"Overview"}</h1>
+          <div><span className="admin-overline">PERSONAL WORKSPACE</span><h1>{cms?"Portfolio CMS":jobs?"Applications":matches?"Job matches":cvs?"My CV library":calendar?"Interview calendar":tasks?"Work board":projects?"Projects":freelance?"Freelance projects":"Overview"}</h1>
           <p>A quiet place for your applications, projects and website content.</p></div>
           <span className="admin-secure">● Protected by Cognito</span>
         </div>
-        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:cvs?<CvLibrary csrf={identity.csrf}/>:calendar?<InterviewCalendar csrf={identity.csrf}/>:tasks?<WorkBoard csrf={identity.csrf}/>:projects?<ProjectPortfolio csrf={identity.csrf}/>:<>
+        {cms?<CmsEditor csrf={identity.csrf}/>:jobs?<JobsPage csrf={identity.csrf}/>:matches?<JobMatches csrf={identity.csrf}/>:cvs?<CvLibrary csrf={identity.csrf}/>:calendar?<InterviewCalendar csrf={identity.csrf}/>:tasks?<WorkBoard csrf={identity.csrf}/>:projects?<ProjectPortfolio csrf={identity.csrf}/>:freelance?<FreelanceProjects csrf={identity.csrf}/>:<>
           <section className="admin-overview-banner">
             <div><span className="admin-overline">YOUR WORKSPACE</span>
               <h2>Everything in one place.</h2>
