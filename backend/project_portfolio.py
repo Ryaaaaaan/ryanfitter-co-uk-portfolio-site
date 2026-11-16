@@ -1,0 +1,212 @@
+"""Self-service private project portfolio, separate from day-to-day tasks.
+
+All writes use the existing Cognito + CSRF gateway and revision-protected
+SQLite records. Starter import is opt-in and idempotent; edits are preserved.
+"""
+from __future__ import annotations
+
+import json
+import re
+import secrets
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+CATEGORIES = ("Commercial", "Income", "Software", "Privacy", "Infrastructure", "Research", "Electronics", "Creative")
+PRIORITIES = ("P0", "P1", "P2", "P3", "P4")
+STATUSES = ("backlog", "active", "waiting", "done", "parked")
+DEFAULTS = {
+    "title": "", "category": "Commercial", "priority": "P2",
+    "status": "backlog", "hours_low": 0, "hours_high": 0,
+    "cost_low": 0, "cost_high": 0, "benefit": "",
+    "next_step": "", "later": "", "notes": "", "checklist": [],
+}
+LENGTHS = {"title": 180, "category": 60, "benefit": 650,
+           "next_step": 1000, "later": 1000, "notes": 8000}
+
+# Title | category | P level | hours low-high | incremental cost GBP low-high.
+# Snapshot only: estimates belong to the owner and remain editable.
+STARTER = """LoftyCards refund/reversal audit|Commercial|P0|8-18|0-0
+LoftyCards / LOPT stock accuracy|Commercial|P0|24-65|0-80
+Remote applications and CV tailoring|Income|P0|12-30|0-30
+Cash-flow, debt and operating budget|Commercial|P0|6-15|0-0
+LOPT Shopify title/SKU/SEO trust|Software|P0|18-50|0-40
+LoftyCards listing throughput|Commercial|P1|25-75|0-180
+LOPT A4 picking / batch picks|Software|P1|25-65|0-100
+5limes positioning and first customer|Income|P1|24-70|20-150
+Dixy website completion and payment|Income|P1|8-30|0-60
+Personal portfolio case studies|Income|P1|10-25|0-50
+LoftyCards stock buying & sell-through|Commercial|P1|10-25|100-750
+LoftyCards SEO and paid ads experiments|Commercial|P1|15-40|50-250
+Email/account digital cleanse|Privacy|P1|15-40|0-0
+Vaultwarden - secure first deployment|Infrastructure|P1|14-35|0-100
+Flint 2 network stability & segmentation|Infrastructure|P1|6-18|0-80
+Project portfolio board for /admin|Software|P1|18-45|0-30
+LoftyCards Pokémon launch test|Commercial|P2|20-65|150-800
+Whatnot / eBay Live pilot|Commercial|P2|12-35|0-180
+5limes freelance outreach channels|Income|P2|12-35|0-80
+LOPT external pilot and security gate|Software|P2|90-220|100-700
+LOPT eBay / channel stock fanout|Software|P2|70-160|0-300
+LOPT stock-aware mega menu|Software|P2|65-160|0-120
+LOPT free catalogue and CSV funnel|Software|P2|60-140|0-150
+LoftyCards old-admin consolidation|Software|P2|10-30|0-0
+Career workspace maintenance|Software|P2|8-25|0-40
+72-hour household outage readiness|Infrastructure|P2|5-15|25-120
+PS2-PC build video/documentation|Creative|P2|12-32|0-100
+DJ practice and first recorded set|Creative|P2|25-70|0-120
+LOPT release planning and purchasing|Software|P3|45-115|0-100
+LOPT multi-game catalogue expansion|Software|P3|80-220|0-500
+TradingLab paper trading validation|Research|P3|30-85|0-100
+Alarm Rush playable public build|Creative|P3|18-50|0-80
+NAS / N100 backup system|Infrastructure|P3|30-100|350-1100
+Flight radar touchscreen prototype|Electronics|P3|16-55|30-180
+GrapheneOS / phone privacy migration|Privacy|P3|12-30|0-600
+Pokémon original-493 / Platinum preservation|Creative|P3|20-65|0-80
+Original cartridge capture/streaming|Creative|P3|12-35|20-150
+Pokémon / PokeMMO tools|Software|P3|18-55|0-50
+Fedora / Firefox / Proton maintenance|Infrastructure|P3|3-12|0-0
+Home network firmware update dashboard|Electronics|P4|18-55|0-80
+Internet radio small-screen device|Electronics|P4|12-40|25-140
+Game Boy hardware repair|Creative|P4|6-20|20-120
+Future mobile-games studio|Creative|P4|120-320|50-500
+LoftyCards bricks-and-mortar shop|Commercial|P4|120-300|15000-60000
+Custom rack/router and redundant homelab|Infrastructure|P4|80-220|400-1800
+Project car restoration|Creative|P4|100-400|1000-7000""".splitlines()
+
+def validate_project(raw):
+    if not isinstance(raw, dict) or set(raw) - set(DEFAULTS):
+        raise ValueError("Invalid project fields.")
+    obj = {**DEFAULTS, **raw}
+    for field, limit in LENGTHS.items():
+        val = obj[field]
+        if not isinstance(val, str) or len(val) > limit:
+            raise ValueError(f"{field} must contain at most {limit} characters.")
+        obj[field] = val.strip()
+    if not obj["title"]:
+        raise ValueError("Project title is required.")
+    if not obj["category"]:
+        raise ValueError("Category is required.")
+    if obj["priority"] not in PRIORITIES or obj["status"] not in STATUSES:
+        raise ValueError("Invalid priority or status.")
+    for field in ("hours_low", "hours_high", "cost_low", "cost_high"):
+        n = obj[field]
+        if type(n) is not int or not 0 <= n <= 1_000_000:
+            raise ValueError(f"{field} must be a non-negative whole number.")
+    if obj["hours_low"] > obj["hours_high"] or obj["cost_low"] > obj["cost_high"]:
+        raise ValueError("Minimum hours or costs cannot exceed maximum.")
+    items = obj["checklist"]
+    if not isinstance(items, list) or len(items) > 80:
+        raise ValueError("Up to 80 checklist items are allowed.")
+    seen = set()
+    cleaned = []
+    for row in items:
+        if not isinstance(row, dict) or set(row) - {"id", "text", "done"}:
+            raise ValueError("Invalid checklist item.")
+        text = row.get("text")
+        done = row.get("done", False)
+        ident = row.get("id") or secrets.token_hex(8)
+        if (not isinstance(text, str) or not 0 < len(text.strip()) <= 300
+                or type(done) is not bool or not isinstance(ident, str)
+                or not re.fullmatch(r"[a-zA-Z0-9_-]{1,40}", ident)
+                or ident in seen):
+            raise ValueError("Checklist item has invalid content or identifier.")
+        seen.add(ident)
+        cleaned.append({"id": ident, "text": text.strip(), "done": done})
+    obj["checklist"] = cleaned
+    return obj
+
+class ProjectStore:
+    def __init__(self, path):
+        self.path = Path(path)
+
+    def connect(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        db = sqlite3.connect(self.path, timeout=12)
+        db.row_factory = sqlite3.Row
+        db.execute("""CREATE TABLE IF NOT EXISTS portfolio_projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            seed_key TEXT UNIQUE,
+            data TEXT NOT NULL,
+            revision INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )""")
+        db.commit()
+        return db
+
+    @staticmethod
+    def _item(row):
+        return {"id": row["id"], **json.loads(row["data"]),
+                "revision": row["revision"], "created_at": row["created_at"],
+                "updated_at": row["updated_at"]}
+
+    def all(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT * FROM portfolio_projects ORDER BY id LIMIT 2000")
+            return [self._item(row) for row in rows.fetchall()]
+
+    def create(self, payload):
+        item = validate_project(payload)
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self.connect() as db:
+            cur = db.execute("INSERT INTO portfolio_projects(data,created_at,updated_at) VALUES(?,?,?)",
+                             (json.dumps(item,ensure_ascii=False), now, now))
+            row = db.execute("SELECT * FROM portfolio_projects WHERE id=?", (cur.lastrowid,)).fetchone()
+            db.commit()
+            return self._item(row)
+
+    def update(self, project_id, payload, revision):
+        item = validate_project(payload)
+        if type(revision) is not int or revision < 1:
+            raise ValueError("Valid project revision required.")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            cur = db.execute("""UPDATE portfolio_projects SET data=?, revision=revision+1,
+                             updated_at=? WHERE id=? AND revision=?""",
+                             (json.dumps(item,ensure_ascii=False), now, project_id, revision))
+            if cur.rowcount != 1:
+                raise RuntimeError("Project has changed or was deleted; reload and retry.")
+            row = db.execute("SELECT * FROM portfolio_projects WHERE id=?", (project_id,)).fetchone()
+            db.commit()
+            return self._item(row)
+
+    def delete(self, project_id, revision):
+        if type(revision) is not int or revision < 1:
+            raise ValueError("Valid project revision required.")
+        with self.connect() as db:
+            cur = db.execute("DELETE FROM portfolio_projects WHERE id=? AND revision=?",
+                             (project_id, revision))
+            if cur.rowcount != 1:
+                raise RuntimeError("Project has changed or was deleted; reload and retry.")
+            db.commit()
+
+    def import_starter(self):
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        added = 0
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            for idx, line in enumerate(STARTER):
+                name, category, priority, hours, cost = line.split("|")
+                hl, hh = map(int, hours.split("-"))
+                cl, ch = map(int, cost.split("-"))
+                status = ("active" if priority == "P0" else
+                          "backlog" if priority in ("P1", "P2") else "parked")
+                item = validate_project({
+                    "title": name, "category": category, "priority": priority,
+                    "hours_low": hl, "hours_high": hh, "cost_low": cl, "cost_high": ch,
+                    "status": status,
+                    "next_step": "Define and complete the next milestone described in the November 2026 project PDF.",
+                    "benefit": "See project PDF for the initial benefit and assumptions.",
+                    "checklist": [
+                        {"text": "Confirm intended outcome and dependencies", "done": False},
+                        {"text": "Complete first deliverable from the project PDF", "done": False},
+                        {"text": "Verify result and record lessons or next steps", "done": False},
+                    ],
+                })
+                cur = db.execute("""INSERT OR IGNORE INTO portfolio_projects
+                    (seed_key,data,created_at,updated_at) VALUES(?,?,?,?)""",
+                    (f"2026-11-16:{idx:03d}", json.dumps(item,ensure_ascii=False), now, now))
+                added += cur.rowcount
+            db.commit()
+        return {"added": added, "total_starter": len(STARTER)}
