@@ -89,6 +89,11 @@ jobs:
               if path.startswith('/admin'):
                   assert 'no-store' in response.headers.get('Cache-Control', '')
               print(path, response.code)
+          with client.open('https://ryanfitter.co.uk/review/dixiescolne/', timeout=30) as response:
+              review = response.read().decode('utf-8')
+              assert "Dixy's Colne — Website Design Preview" in review
+              assert 'name="robots" content="noindex,nofollow"' in review
+              assert 'site-build-revision' not in review
           with client.open('https://ryanfitter.co.uk/content/site.json', timeout=30) as response:
               assert json.load(response)['version'] == 1
           try: response = client.open('https://trading.ryanfitter.co.uk/', timeout=30)
