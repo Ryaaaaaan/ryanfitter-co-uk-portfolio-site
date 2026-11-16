@@ -70,6 +70,37 @@ class ProjectStoreTest(unittest.TestCase):
         self.assertEqual(restored["added"], 1)
         self.assertEqual(len(self.store.all()), 46)
 
+    def test_default_tabs_legacy_mapping_and_safe_editing(self):
+        entries = self.store.all()
+        self.assertEqual(len(entries), 46)
+        self.assertTrue(any(p["board_id"] == "lopt" for p in entries))
+        self.assertTrue(any(p["board_id"] == "lofty" for p in entries))
+        tabs = self.store.tabs()
+        self.assertIn("5limes", [t["id"] for t in tabs["tabs"]])
+        new_tabs = [*tabs["tabs"][:-1], {"id": "special", "name": "Custom"}, tabs["tabs"][-1]]
+        saved = self.store.save_tabs(new_tabs, 1)
+        self.assertEqual(saved["revision"], 2)
+        self.assertEqual(self.store.tabs()["tabs"][-2]["name"], "Custom")
+        with self.assertRaises(RuntimeError):
+            self.store.save_tabs(new_tabs, 1)
+        self.assertEqual(self.store.create({**sample(), "board_id": "special"})["board_id"], "special")
+        with self.assertRaises(ValueError):
+            self.store.save_tabs([t for t in saved["tabs"] if t["id"] != "special"], 2)
+        with self.assertRaises(ValueError):
+            self.store.create({**sample(), "board_id": "unknown_tab"})
+        # A stale legacy record can still be read, edited and ticked off without data loss.
+        p = entries[0]
+        revised = self.store.update(p["id"], {
+            "title": p["title"], "category": p["category"], "board_id": p["board_id"],
+            "priority": p["priority"], "status": "done",
+            "hours_low": p["hours_low"], "hours_high": p["hours_high"],
+            "cost_low": p["cost_low"], "cost_high": p["cost_high"],
+            "due_date": p["due_date"], "benefit": p["benefit"],
+            "next_step": p["next_step"], "later": p["later"], "notes": p["notes"],
+            "checklist": p["checklist"]
+        }, p["revision"])
+        self.assertEqual(revised["board_id"], p["board_id"])
+
     def test_bad_data_rejected(self):
         invalid = [
             {**sample(), "due_date": "2027-02-30"},
@@ -103,6 +134,28 @@ class ProjectSecurityTest(DashboardAuthTest):
         self.assertEqual(self.client.get("/admin/api/projects").status_code, 401)
         self.assertEqual(self.client.post("/admin/api/projects", json=sample()).status_code, 401)
         self.assertEqual(self.client.post("/admin/api/projects/import-starter", json={}).status_code, 401)
+
+    def test_tab_api_protected_editable_and_conflict_checked(self):
+        self.assertEqual(self.client.get("/admin/api/project-tabs").status_code, 401)
+        self.assertEqual(self.client.put("/admin/api/project-tabs", json={}).status_code, 401)
+        self.assertEqual(self.mock_callback().status_code, 303)
+        initial = self.client.get("/admin/api/project-tabs").json
+        self.assertEqual(initial["revision"], 1)
+        self.assertEqual(self.client.put("/admin/api/project-tabs", json={
+            "revision": 1, "tabs": initial["tabs"]}).status_code, 403)
+        csrf = self.client.get("/admin/api/session").json["csrf"]
+        headers = {"Origin": "https://ryanfitter.co.uk", "X-CSRF-Token": csrf}
+        changed = [*initial["tabs"], {"id": "new_tab", "name": "New workstream"}]
+        edited = self.client.put("/admin/api/project-tabs", headers=headers,
+            json={"revision": 1, "tabs": changed})
+        self.assertEqual(edited.status_code, 200, edited.data)
+        self.assertEqual(edited.json["tabs"][-1]["id"], "new_tab")
+        stale = self.client.put("/admin/api/project-tabs", headers=headers,
+            json={"revision": 1, "tabs": changed})
+        self.assertEqual(stale.status_code, 409)
+        bad = self.client.put("/admin/api/project-tabs", headers=headers,
+            json={"revision": 2, "tabs": [{**changed[0], "id": "BAD SPACE"}]})
+        self.assertEqual(bad.status_code, 400)
 
     def test_authenticated_project_crud_csrf_and_versions(self):
         self.assertEqual(self.mock_callback().status_code, 303)
