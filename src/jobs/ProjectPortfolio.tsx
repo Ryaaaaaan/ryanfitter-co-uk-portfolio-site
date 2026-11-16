@@ -5,12 +5,14 @@ type Status='backlog'|'active'|'waiting'|'done'|'parked';
 type Priority='P0'|'P1'|'P2'|'P3'|'P4';
 type Step={id:string;text:string;done:boolean;due_date:string};
 type Data={
- title:string;category:string;priority:Priority;status:Status;
+ title:string;category:string;board_id:string;priority:Priority;status:Status;
  hours_low:number;hours_high:number;cost_low:number;cost_high:number;
  due_date:string;benefit:string;next_step:string;later:string;notes:string;checklist:Step[]
 };
 type Project=Data&{id:number;revision:number;created_at:string;updated_at:string};
-const fresh:Data={title:'',category:'Commercial',priority:'P2',status:'backlog',
+type Tab={id:string;name:string};
+type TabsState={revision:number;tabs:Tab[]};
+const fresh:Data={title:'',category:'Commercial',board_id:'other',priority:'P2',status:'backlog',
  hours_low:0,hours_high:0,cost_low:0,cost_high:0,due_date:'',
  benefit:'',next_step:'',later:'',notes:'',checklist:[]};
 const stages:Record<Status,string>={backlog:'Queued',active:'In progress',waiting:'Waiting',done:'Completed',parked:'Parked'};
@@ -22,7 +24,7 @@ const shortDate=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('en-GB',{
 const weekRange=(p:Project,h:number)=>(Math.ceil(p.hours_low/h*10)/10)+'–'+(Math.ceil(p.hours_high/h*10)/10)+' weeks';
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
 const asData=(p:Project):Data=>({
- title:p.title,category:p.category,priority:p.priority,status:p.status,
+ title:p.title,category:p.category,board_id:p.board_id,priority:p.priority,status:p.status,
  hours_low:p.hours_low,hours_high:p.hours_high,cost_low:p.cost_low,cost_high:p.cost_high,
  due_date:p.due_date,benefit:p.benefit,next_step:p.next_step,later:p.later,notes:p.notes,
  checklist:p.checklist.map(s=>({...s}))
@@ -34,24 +36,39 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
  const [query,setQuery]=useState(''),[category,setCategory]=useState('all');
  const [priority,setPriority]=useState('all'),[stage,setStage]=useState('all');
  const [selected,setSelected]=useState<number|null>(null);
+ const [tabs,setTabs]=useState<TabsState>({revision:1,tabs:[]});
+ const [activeTab,setActiveTab]=useState('lopt');
+ const [view,setView]=useState<'board'|'list'>('board');
+ const [manageTabs,setManageTabs]=useState(false);
+ const [tabDraft,setTabDraft]=useState<Tab[]>([]);
+ const [dragTab,setDragTab]=useState<string|null>(null);
+ const [dragProject,setDragProject]=useState<number|null>(null);
  const [editor,setEditor]=useState<{item:Project|null;form:Data}|null>(null);
  const [stepText,setStepText]=useState(''),[stepDue,setStepDue]=useState('');
  const [stepEditor,setStepEditor]=useState<{id:string;text:string;due_date:string}|null>(null);
  const project=items.find(p=>p.id===selected)||null;
  const categories=useMemo(()=>Array.from(new Set([...defaults,...items.map(p=>p.category)])).sort(),[items]);
  const visible=useMemo(()=>items.filter(p=>{
+  if(activeTab!=='all'&&p.board_id!==activeTab)return false;
   if(category!=='all'&&p.category!==category)return false;
   if(priority!=='all'&&p.priority!==priority)return false;
   if(stage!=='all'&&p.status!==stage)return false;
   return [p.title,p.category,p.benefit,p.next_step,p.notes].join(' ').toLowerCase().includes(query.trim().toLowerCase());
- }).sort((a,b)=>a.priority.localeCompare(b.priority)||a.title.localeCompare(b.title)),[items,query,category,priority,stage]);
+ }).sort((a,b)=>a.priority.localeCompare(b.priority)||a.title.localeCompare(b.title)),[items,activeTab,query,category,priority,stage]);
+ async function refreshTabs(){
+  const r=await fetch('/admin/api/project-tabs',{credentials:'same-origin',cache:'no-store'});
+  if(!r.ok)throw Error('Could not load project tabs.');
+  const data=await r.json() as TabsState;
+  setTabs(data);
+  setActiveTab(current=>current==='all'||data.tabs.some(t=>t.id===current)?current:(data.tabs[0]?.id||'all'));
+ }
  async function refresh(){
   const r=await fetch('/admin/api/projects',{credentials:'same-origin',cache:'no-store'});
   if(!r.ok)throw Error('Could not load private projects.');
   const data=await r.json() as {projects:Project[]};
   setItems(data.projects);
  }
- useEffect(()=>{void refresh().catch(e=>setError(String(e))).finally(()=>setLoad(false));},[]);
+ useEffect(()=>{void Promise.all([refresh(),refreshTabs()]).catch(e=>setError(String(e))).finally(()=>setLoad(false));},[]);
  async function call(path:string,method:string,body:unknown){
   const r=await fetch(path,{method,credentials:'same-origin',headers:{
     'Content-Type':'application/json','X-CSRF-Token':csrf
@@ -76,7 +93,10 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
    setEditor(null);setNotice(item?'Project updated.':'Project added.');
   });
  }
- function edit(p:Project|null){setEditor({item:p,form:p?asData(p):{...fresh,checklist:[]}});setError('');}
+ function edit(p:Project|null){
+  setEditor({item:p,form:p?asData(p):{...fresh,board_id:activeTab==='all'?'other':activeTab,checklist:[]}});
+  setError('');
+ }
  async function update(p:Project,data:Data){
   await run(async()=>{await call('/admin/api/projects/'+p.id,'PUT',{revision:p.revision,project:data});});
  }
@@ -101,8 +121,29 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
     setNotice('Restored '+r.added+' missing projects; existing projects were not overwritten.');
   });
  }
+ async function saveTabs(){
+  await run(async()=>{
+   const data=await call('/admin/api/project-tabs','PUT',{revision:tabs.revision,tabs:tabDraft}) as TabsState;
+   setTabs(data);setManageTabs(false);
+   if(activeTab!=='all'&&!data.tabs.some(t=>t.id===activeTab))setActiveTab('all');
+   setNotice('Tabs saved and reordered.');
+  });
+ }
+ function startManageTabs(){setTabDraft(tabs.tabs.map(t=>({...t})));setManageTabs(true);setError('');}
+ function addTab(){
+  if(tabDraft.length>=40){setError('A maximum of 40 tabs is supported.');return;}
+  setTabDraft(v=>[...v,{id:'tab_'+Math.random().toString(36).slice(2,12),name:'New tab'}]);
+ }
+ function moveTab(from:number,to:number){
+  if(to<0||to>=tabDraft.length||from===to)return;
+  setTabDraft(v=>{const copy=[...v];const [moved]=copy.splice(from,1);copy.splice(to,0,moved);return copy;});
+ }
+ async function dropProject(id:number,status:Status){
+  const p=items.find(x=>x.id===id);setDragProject(null);
+  if(p&&p.status!==status)await update(p,{...asData(p),status});
+ }
  function exportBackup(){
-  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),projects:items},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),projects:items,tabs},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ryan-projects-backup.json';link.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
