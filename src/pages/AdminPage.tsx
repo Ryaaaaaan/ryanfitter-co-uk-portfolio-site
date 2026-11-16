@@ -23,6 +23,7 @@ const modules = [
   {name:"Applications",eyebrow:"FOLLOW UP",description:"Save vacancies, track applications and keep important next steps together.",icon:"▤",detail:"Saved → Applied → Interview → Offer",url:"/admin/jobs",stat:"jobs"},
   {name:"Projects",eyebrow:"MASTER PLAN",description:"All 46 commercial, technical and creative projects with costs, milestones and checklists.",icon:"◧",detail:"Priorities · Deadlines · Progress",url:"/admin/projects",stat:""},
   {name:"Work board",eyebrow:"DAY-TO-DAY",description:"Personal projects, LoftyCards, LOPT and ongoing tasks in one place.",icon:"▦",detail:"To do → In progress → Done",url:"/admin/tasks",stat:"tasks"},
+  {name:"Freelance projects",eyebrow:"CLIENT WORK",description:"Keep briefs, technical choices, design drafts and live previews together.",icon:"◧",detail:"Scope · CMS · Preview",url:"/admin/freelance",stat:""},
   {name:"Interview calendar",eyebrow:"YOUR SCHEDULE",description:"Record interviews, meeting links, notes and calendar exports.",icon:"◷",detail:"Monthly schedule and .ics export",url:"/admin/interviews",stat:""},
   {name:"My CVs",eyebrow:"DOCUMENTS",description:"Store your CV versions privately and download them from any device.",icon:"▣",detail:"Secure documents",url:"/admin/cvs",stat:""},
   {name:"Portfolio CMS",eyebrow:"WEBSITE",description:"Edit sections and case studies, preview drafts and publish intentionally.",icon:"✳",detail:"Draft → Preview → Publish",url:"/admin/cms",stat:""}
@@ -80,7 +81,7 @@ export function AdminPage(){
         <a href="/" className="admin-brand">ryan<span>.</span>fitter <small>WORKSPACE</small></a>
         <div className="admin-sidebar-label">WORKSPACE</div>
         <nav aria-label="Dashboard navigation">
-          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks&&!projects&&!freelance?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks?"page":undefined}>Overview</a>
+          <a href="/admin" className={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks&&!projects&&!freelance?"admin-nav-active":""} aria-current={!cms&&!jobs&&!matches&&!cvs&&!calendar&&!tasks&&!projects&&!freelance?"page":undefined}>Overview</a>
           <a href="/admin/job-matches" className={matches?"admin-nav-active":""} aria-current={matches?"page":undefined}>Job matches</a>
           <a href="/admin/jobs" className={jobs?"admin-nav-active":""} aria-current={jobs?"page":undefined}>Applications</a>
           <a href="/admin/interviews" className={calendar?"admin-nav-active":""} aria-current={calendar?"page":undefined}>Interview calendar</a>
