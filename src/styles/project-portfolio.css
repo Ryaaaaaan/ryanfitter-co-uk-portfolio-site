@@ -31,3 +31,45 @@
 .portfolio-modal{background:#fff;width:min(730px,100%);max-height:min(91vh,930px);overflow:auto;padding:24px;border-radius:12px;box-shadow:0 14px 60px #13281c50;display:grid;gap:13px}.portfolio-modal header h3{margin:0 0 5px;font-size:24px}.portfolio-modal header p{margin:0;font-size:12px;color:#617367}.portfolio-modal label{display:grid;gap:6px;font-weight:750;color:#4e6b56;font-size:11px}.portfolio-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.portfolio-form-grid label{min-width:0}.portfolio-modal-actions{display:flex;justify-content:end;gap:10px;margin-top:6px}.portfolio-modal-actions button:not(.portfolio-primary){border:1px solid #d2dfd4;background:#fff;border-radius:7px;padding:8px 13px}.portfolio-modal-note{font-size:11px;color:#657b6b;margin:0}
 @media(max-width:850px){.portfolio-body{grid-template-columns:1fr}.portfolio-list{max-height:365px}.portfolio-detail{padding:17px}.portfolio-header{align-items:start;flex-direction:column}.portfolio-mini-metrics{grid-template-columns:1fr 1fr}.portfolio-hours-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:500px){.portfolio-metrics{grid-template-columns:1fr 1fr}.portfolio-form-grid{grid-template-columns:1fr}.portfolio-mini-metrics{grid-template-columns:1fr}.portfolio-detail-title{flex-direction:column}.portfolio-modal{padding:17px}}
+
+
+/* Workstream tabs and Planner-style columns. Keep project metadata styles intact. */
+.portfolio-workstream-nav{display:flex;gap:10px;align-items:center;margin:18px 0 10px;padding-bottom:1px;border-bottom:1px solid #d3dfd6}
+.portfolio-tabs{display:flex;align-items:stretch;gap:3px;overflow-x:auto;scrollbar-width:thin;flex:1;min-width:0}
+.portfolio-tab{border:0!important;border-bottom:3px solid transparent!important;background:transparent!important;color:#637469!important;padding:11px 13px!important;font-size:12px!important;font-weight:750!important;white-space:nowrap}
+.portfolio-tab:hover{color:#275d42!important;background:#edf5ef!important}
+.portfolio-tab.is-active{color:#165b3a!important;border-bottom-color:#248257!important;background:#e8f4eb!important;border-radius:7px 7px 0 0}
+.portfolio-tab span{display:inline-block;font-size:10px;padding:2px 6px;margin-left:5px;background:#dfe9e0;border-radius:10px;color:#597362}
+.portfolio-tab-manage{white-space:nowrap;color:#2b6042;border:1px solid #d5e3d7;background:#fff;border-radius:7px;padding:9px 11px;font-size:11px;font-weight:750}
+.portfolio-board-toolbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:13px 0 16px}
+.portfolio-board-toolbar strong{font-size:18px;letter-spacing:-.035em}
+.portfolio-board-toolbar small{display:block;font-size:11px;color:#6f8274}
+.portfolio-view-switch{display:flex;background:#e4eee7;border-radius:8px;padding:3px;flex-shrink:0}
+.portfolio-view-switch button{border:0!important;border-radius:6px;background:transparent!important;padding:7px 11px;font-size:11px;color:#4c705c}
+.portfolio-view-switch button.active{background:#fff!important;color:#206244!important;box-shadow:0 1px 4px #24412a1a}
+.portfolio-body.portfolio-board-mode{display:flex;flex-direction:column;gap:22px}
+.portfolio-kanban{display:flex;align-items:stretch;gap:13px;overflow-x:auto;padding:4px 2px 14px;min-height:330px;max-width:100%;scrollbar-color:#c0d1c4 transparent}
+.portfolio-kanban-column{background:#edf2ef;border-radius:11px;border:1px solid #dfe9e1;flex:1 0 210px;min-width:210px;max-width:360px;display:flex;flex-direction:column;align-self:stretch;padding:11px}
+.portfolio-kanban-column>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 3px 10px;border-bottom:1px solid #d9e5dc}
+.portfolio-kanban-column>header strong{font-size:13px;color:#365541}
+.portfolio-kanban-column>header span{background:#dbe7de;color:#365b45;font-size:11px;border-radius:20px;min-width:23px;text-align:center;padding:2px 6px}
+.portfolio-kanban-stack{display:flex;flex-direction:column;gap:9px;min-height:140px;flex:1;padding:10px 0}
+.portfolio-kanban-card{width:100%;text-align:left;display:grid;gap:10px;cursor:grab!important;background:#fff;border:1px solid #d8e4dc!important;border-radius:8px!important;padding:12px!important;box-shadow:0 1px 3px #264d3214;color:#25372c!important}
+.portfolio-kanban-card:hover{box-shadow:0 4px 12px #264d3222;border-color:#96b9a1!important}
+.portfolio-kanban-card.selected{border-color:#268453!important;box-shadow:0 0 0 2px #2c875638}
+.portfolio-kanban-card strong{font-size:13px;line-height:1.4;overflow-wrap:anywhere;font-weight:750}
+.portfolio-kanban-label{display:flex;justify-content:space-between;gap:5px;align-items:center;color:#6f8474;font-size:10px}
+.portfolio-kanban-meta{display:flex;justify-content:space-between;gap:5px;flex-wrap:wrap;color:#718373;font-size:10px}
+.portfolio-kanban-empty{font-size:11px;text-align:center;color:#83978a;border:1px dashed #cddbcf;border-radius:8px;margin:5px 0;padding:20px 10px}
+.portfolio-kanban-add{border:0!important;background:transparent!important;color:#5b7762!important;font-size:11px;padding:9px;text-align:left}
+.portfolio-board-card-actions{display:flex;gap:12px;flex-wrap:wrap;margin:15px 0 0;border-top:1px solid #edf0ec;padding-top:13px}
+.portfolio-board-card-actions label{font-size:11px;color:#566c5b;display:grid;gap:4px}
+.portfolio-board-card-actions select{min-width:140px}
+.portfolio-tabs-editor{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow:auto;padding:4px 2px}
+.portfolio-tab-row{display:flex;align-items:center;gap:8px;border:1px solid #dfe9df;border-radius:7px;padding:6px 8px;background:#f8faf8}
+.portfolio-tab-handle{cursor:grab;color:#8a9f8f;font-size:20px}
+.portfolio-tab-row input{flex:1;min-width:0;padding:8px 10px}
+.portfolio-tab-row button{border:1px solid #d1ddd3;background:#fff;color:#4a6750;border-radius:5px;min-width:29px;height:32px}
+.portfolio-tabs-modal{max-width:620px}
+@media(max-width:1050px){.portfolio-kanban-column{flex-basis:245px}.portfolio-kanban{scroll-snap-type:x proximity}.portfolio-kanban-column{scroll-snap-align:start}}
+@media(max-width:640px){.portfolio-workstream-nav{flex-direction:column;align-items:stretch}.portfolio-tab-manage{align-self:flex-end}.portfolio-board-toolbar{align-items:flex-start;flex-direction:column}.portfolio-kanban-column{min-width:255px}.portfolio-kanban{max-width:calc(100vw - 60px)}}
