@@ -57,7 +57,7 @@ def validate_project(raw):
     if item["status"] not in STATUSES:
         raise ValueError("Choose a valid project status.")
     for key in ("repository_url", "preview_url"):
-        if item[key] and not re.fullmatch(r"https://[^\\s]+", item[key]):
+        if item[key] and not re.fullmatch(r"https://[^\s]+", item[key]):
             raise ValueError(f"{key} must be a secure https URL.")
     design = item.get("design", DEFAULT_DESIGN)
     if not isinstance(design, dict) or set(design) - set(DEFAULT_DESIGN):
