@@ -439,6 +439,24 @@ def create_app() -> Flask:
         except RuntimeError as error:
             return jsonify({"error": str(error)}), 409
 
+    @app.route("/admin/api/project-tabs", methods=["GET", "PUT"])
+    def project_tabs():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify(portfolio.tabs())
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or set(payload) != {"revision", "tabs"}:
+            return jsonify({"error": "Tabs and revision required."}), 400
+        try:
+            return jsonify(portfolio.save_tabs(payload["tabs"], payload["revision"]))
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
     @app.route("/admin/api/projects", methods=["GET", "POST"])
     def projects_collection():
         if not signed_in():
