@@ -18,11 +18,11 @@ PRIORITIES = ("P0", "P1", "P2", "P3", "P4")
 STATUSES = ("backlog", "active", "waiting", "done", "parked")
 DEFAULTS = {
     "title": "", "category": "Commercial", "priority": "P2",
-    "status": "backlog", "hours_low": 0, "hours_high": 0,
+    "status": "backlog", "board_id": "", "hours_low": 0, "hours_high": 0,
     "cost_low": 0, "cost_high": 0, "benefit": "",
     "next_step": "", "later": "", "notes": "", "due_date": "", "checklist": [],
 }
-LENGTHS = {"title": 180, "category": 60, "benefit": 650,
+LENGTHS = {"title": 180, "category": 60, "board_id": 40, "benefit": 650,
            "next_step": 1000, "later": 1000, "notes": 8000, "due_date": 10}
 
 # Title | category | P level | hours low-high | incremental cost GBP low-high.
@@ -74,6 +74,64 @@ LoftyCards bricks-and-mortar shop|Commercial|P4|120-300|15000-60000
 Custom rack/router and redundant homelab|Infrastructure|P4|80-220|400-1800
 Project car restoration|Creative|P4|100-400|1000-7000""".splitlines()
 
+# Stable workstream identifiers are separate from financial/functional category.
+DEFAULT_TABS = (
+    {"id": "lopt", "name": "LOPT"},
+    {"id": "lofty", "name": "LoftyCards"},
+    {"id": "portfolio", "name": "Portfolio"},
+    {"id": "fun", "name": "Fun"},
+    {"id": "dj", "name": "DJ"},
+    {"id": "freelance", "name": "Freelance"},
+    {"id": "5limes", "name": "5limes"},
+    {"id": "home", "name": "Home & Privacy"},
+    {"id": "other", "name": "Other"},
+)
+
+def inferred_tab(name, category):
+    """Map legacy records without modifying their stored JSON or revisions."""
+    n = name.lower()
+    if "lopt" in n:
+        return "lopt"
+    if "5limes" in n or "dixy" in n:
+        return "5limes"
+    if "freelance" in n:
+        return "freelance"
+    if n.startswith("dj ") or " dj " in n:
+        return "dj"
+    if "loftycards" in n or "whatnot" in n or "ebay live" in n:
+        return "lofty"
+    if ("portfolio" in n or "career" in n or "cv " in n or
+        "remote applications" in n or "project board" in n):
+        return "portfolio"
+    if category in ("Privacy", "Infrastructure", "Electronics"):
+        return "home"
+    if category in ("Creative", "Research"):
+        return "fun"
+    return "other"
+
+def validate_tabs(raw):
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 40:
+        raise ValueError("Provide between one and 40 tabs.")
+    ids = set()
+    names = set()
+    tabs = []
+    for tab in raw:
+        if not isinstance(tab, dict) or set(tab) != {"id", "name"}:
+            raise ValueError("Tab must have an ID and name.")
+        key, name = tab["id"], tab["name"]
+        if not isinstance(key, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,40}", key):
+            raise ValueError("Invalid tab identifier.")
+        if not isinstance(name, str) or not 1 <= len(name.strip()) <= 50:
+            raise ValueError("Tab names must contain 1–50 characters.")
+        if key in ids or name.strip().casefold() in names:
+            raise ValueError("Duplicate tab.")
+        ids.add(key)
+        names.add(name.strip().casefold())
+        tabs.append({"id": key, "name": name.strip()})
+    if "other" not in ids:
+        raise ValueError("Keep the Other tab for uncategorised projects.")
+    return tabs
+
 def validate_project(raw):
     if not isinstance(raw, dict) or set(raw) - set(DEFAULTS):
         raise ValueError("Invalid project fields.")
@@ -93,6 +151,8 @@ def validate_project(raw):
                 raise ValueError()
         except ValueError:
             raise ValueError("Due date must be YYYY-MM-DD.") from None
+    if obj["board_id"] and not re.fullmatch(r"[a-zA-Z0-9_-]{1,40}", obj["board_id"]):
+        raise ValueError("Invalid workstream tab.")
     if obj["priority"] not in PRIORITIES or obj["status"] not in STATUSES:
         raise ValueError("Invalid priority or status.")
     for field in ("hours_low", "hours_high", "cost_low", "cost_high"):
@@ -156,9 +216,49 @@ class ProjectStore:
 
     @staticmethod
     def _item(row):
-        return {"id": row["id"], **json.loads(row["data"]),
+        data = json.loads(row["data"])
+        if not data.get("board_id"):
+            data["board_id"] = inferred_tab(data["title"], data["category"])
+        return {"id": row["id"], **data,
                 "revision": row["revision"], "created_at": row["created_at"],
                 "updated_at": row["updated_at"]}
+
+    def tabs(self):
+        with self.connect() as db:
+            row = db.execute("SELECT value FROM portfolio_settings WHERE key='workstream_tabs'").fetchone()
+            return json.loads(row["value"]) if row else {"revision": 1, "tabs": list(DEFAULT_TABS)}
+
+    def save_tabs(self, tabs, revision):
+        cleaned = validate_tabs(tabs)
+        if type(revision) is not int or revision < 1:
+            raise ValueError("Tab revision is required.")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT value FROM portfolio_settings WHERE key='workstream_tabs'").fetchone()
+            current = json.loads(row["value"]) if row else {"revision": 1, "tabs": list(DEFAULT_TABS)}
+            if current["revision"] != revision:
+                raise RuntimeError("Tabs changed on another device. Reload before editing.")
+            old = {t["id"] for t in current["tabs"]}
+            new = {t["id"] for t in cleaned}
+            deleted = old - new
+            if deleted:
+                rows = db.execute("SELECT data FROM portfolio_projects").fetchall()
+                for r in rows:
+                    item = json.loads(r["data"])
+                    assigned = item.get("board_id") or inferred_tab(item["title"], item["category"])
+                    if assigned in deleted:
+                        raise ValueError("Move all projects out of a tab before deleting it.")
+            updated = {"revision": revision + 1, "tabs": cleaned}
+            db.execute("INSERT OR REPLACE INTO portfolio_settings(key,value) VALUES(?,?)",
+                       ("workstream_tabs", json.dumps(updated, ensure_ascii=False)))
+            db.commit()
+            return updated
+
+    def _check_board(self, item):
+        allowed = {x["id"] for x in self.tabs()["tabs"]}
+        if item["board_id"] and item["board_id"] not in allowed:
+            raise ValueError("Workstream tab no longer exists.")
+
 
     def all(self):
         self.ensure_starter()
@@ -168,6 +268,7 @@ class ProjectStore:
 
     def create(self, payload):
         item = validate_project(payload)
+        self._check_board(item)
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with self.connect() as db:
             cur = db.execute("INSERT INTO portfolio_projects(data,created_at,updated_at) VALUES(?,?,?)",
@@ -178,6 +279,7 @@ class ProjectStore:
 
     def update(self, project_id, payload, revision):
         item = validate_project(payload)
+        self._check_board(item)
         if type(revision) is not int or revision < 1:
             raise ValueError("Valid project revision required.")
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -239,7 +341,7 @@ class ProjectStore:
             item = validate_project({
                 "title": name, "category": category, "priority": priority,
                 "hours_low": hl, "hours_high": hh, "cost_low": cl, "cost_high": ch,
-                "status": status, "next_step": next_step,
+                "status": status, "board_id": inferred_tab(name, category), "next_step": next_step,
                 "benefit": benefit, "later": later,
                 "checklist": [
                     {"text": "Confirm outcome, scope and dependencies", "done": False},
