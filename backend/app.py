@@ -18,6 +18,7 @@ from threading import Thread
 from backend.cms import ContentStore
 from backend.jobs import JobStore
 from backend.work_board import TaskStore
+from backend.project_portfolio import ProjectStore
 from backend.job_matches import MatchStore, scan as scan_matches
 from backend.cv_vault import CvVault
 from backend.interviews import InterviewStore, to_ical
@@ -73,6 +74,7 @@ def create_app() -> Flask:
     store = ContentStore(os.environ.get("CMS_DATABASE", "/var/lib/ryanfitter-admin/cms.sqlite3"))
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     tasks = TaskStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    portfolio = ProjectStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     matches = MatchStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
     cv = CvVault(os.environ.get("CV_DIRECTORY", "/var/lib/ryanfitter-admin/cvs"),
@@ -437,6 +439,47 @@ def create_app() -> Flask:
         except RuntimeError as error:
             return jsonify({"error": str(error)}), 409
 
+    @app.route("/admin/api/projects", methods=["GET", "POST"])
+    def projects_collection():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            return jsonify({"projects": portfolio.all()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            return jsonify({"project": portfolio.create(request.get_json(silent=True))}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.post("/admin/api/projects/import-starter")
+    def projects_import():
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        return jsonify(portfolio.import_starter())
+
+    @app.route("/admin/api/projects/<int:project_id>", methods=["PUT", "DELETE"])
+    def projects_detail(project_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or type(payload.get("revision")) is not int:
+            return jsonify({"error": "Project revision required."}), 400
+        try:
+            if request.method == "DELETE":
+                portfolio.delete(project_id, payload["revision"])
+                return "", 204
+            return jsonify({"project": portfolio.update(
+                project_id, payload.get("project"), payload["revision"])})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
     @app.route("/admin/api/jobs", methods=["GET", "POST"])
     def jobs_collection():
         if not signed_in():
@@ -518,6 +561,7 @@ def create_app() -> Flask:
     @app.get("/admin/")
     @app.get("/admin/cms")
     @app.get("/admin/tasks")
+    @app.get("/admin/projects")
     @app.get("/admin/jobs")
     @app.get("/admin/job-matches")
     @app.get("/admin/cvs")
