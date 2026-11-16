@@ -9,7 +9,8 @@ import json
 import re
 import secrets
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from backend.project_starter import PROJECT_DETAILS
 from pathlib import Path
 
 CATEGORIES = ("Commercial", "Income", "Software", "Privacy", "Infrastructure", "Research", "Electronics", "Creative")
@@ -19,10 +20,10 @@ DEFAULTS = {
     "title": "", "category": "Commercial", "priority": "P2",
     "status": "backlog", "hours_low": 0, "hours_high": 0,
     "cost_low": 0, "cost_high": 0, "benefit": "",
-    "next_step": "", "later": "", "notes": "", "checklist": [],
+    "next_step": "", "later": "", "notes": "", "due_date": "", "checklist": [],
 }
 LENGTHS = {"title": 180, "category": 60, "benefit": 650,
-           "next_step": 1000, "later": 1000, "notes": 8000}
+           "next_step": 1000, "later": 1000, "notes": 8000, "due_date": 10}
 
 # Title | category | P level | hours low-high | incremental cost GBP low-high.
 # Snapshot only: estimates belong to the owner and remain editable.
@@ -86,6 +87,12 @@ def validate_project(raw):
         raise ValueError("Project title is required.")
     if not obj["category"]:
         raise ValueError("Category is required.")
+    if obj["due_date"]:
+        try:
+            if date.fromisoformat(obj["due_date"]).isoformat() != obj["due_date"]:
+                raise ValueError()
+        except ValueError:
+            raise ValueError("Due date must be YYYY-MM-DD.") from None
     if obj["priority"] not in PRIORITIES or obj["status"] not in STATUSES:
         raise ValueError("Invalid priority or status.")
     for field in ("hours_low", "hours_high", "cost_low", "cost_high"):
@@ -100,10 +107,19 @@ def validate_project(raw):
     seen = set()
     cleaned = []
     for row in items:
-        if not isinstance(row, dict) or set(row) - {"id", "text", "done"}:
+        if not isinstance(row, dict) or set(row) - {"id", "text", "done", "due_date"}:
             raise ValueError("Invalid checklist item.")
         text = row.get("text")
         done = row.get("done", False)
+        due = row.get("due_date", "")
+        if not isinstance(due, str) or len(due) > 10:
+            raise ValueError("Invalid checklist due date.")
+        if due:
+            try:
+                if date.fromisoformat(due).isoformat() != due:
+                    raise ValueError()
+            except ValueError:
+                raise ValueError("Invalid checklist due date.") from None
         ident = row.get("id") or secrets.token_hex(8)
         if (not isinstance(text, str) or not 0 < len(text.strip()) <= 300
                 or type(done) is not bool or not isinstance(ident, str)
@@ -111,7 +127,7 @@ def validate_project(raw):
                 or ident in seen):
             raise ValueError("Checklist item has invalid content or identifier.")
         seen.add(ident)
-        cleaned.append({"id": ident, "text": text.strip(), "done": done})
+        cleaned.append({"id": ident, "text": text.strip(), "done": done, "due_date": due})
     obj["checklist"] = cleaned
     return obj
 
@@ -123,6 +139,10 @@ class ProjectStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         db = sqlite3.connect(self.path, timeout=12)
         db.row_factory = sqlite3.Row
+        db.execute("""CREATE TABLE IF NOT EXISTS portfolio_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )""")
         db.execute("""CREATE TABLE IF NOT EXISTS portfolio_projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             seed_key TEXT UNIQUE,
@@ -141,6 +161,7 @@ class ProjectStore:
                 "updated_at": row["updated_at"]}
 
     def all(self):
+        self.ensure_starter()
         with self.connect() as db:
             rows = db.execute("SELECT * FROM portfolio_projects ORDER BY id LIMIT 2000")
             return [self._item(row) for row in rows.fetchall()]
@@ -181,32 +202,53 @@ class ProjectStore:
                 raise RuntimeError("Project has changed or was deleted; reload and retry.")
             db.commit()
 
-    def import_starter(self):
-        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        added = 0
+    def ensure_starter(self):
+        """Seed once on authenticated first visit; deletions never reappear."""
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            for idx, line in enumerate(STARTER):
-                name, category, priority, hours, cost = line.split("|")
-                hl, hh = map(int, hours.split("-"))
-                cl, ch = map(int, cost.split("-"))
-                status = ("active" if priority == "P0" else
-                          "backlog" if priority in ("P1", "P2") else "parked")
-                item = validate_project({
-                    "title": name, "category": category, "priority": priority,
-                    "hours_low": hl, "hours_high": hh, "cost_low": cl, "cost_high": ch,
-                    "status": status,
-                    "next_step": "Define and complete the next milestone described in the November 2026 project PDF.",
-                    "benefit": "See project PDF for the initial benefit and assumptions.",
-                    "checklist": [
-                        {"text": "Confirm intended outcome and dependencies", "done": False},
-                        {"text": "Complete first deliverable from the project PDF", "done": False},
-                        {"text": "Verify result and record lessons or next steps", "done": False},
-                    ],
-                })
-                cur = db.execute("""INSERT OR IGNORE INTO portfolio_projects
-                    (seed_key,data,created_at,updated_at) VALUES(?,?,?,?)""",
-                    (f"2026-11-16:{idx:03d}", json.dumps(item,ensure_ascii=False), now, now))
-                added += cur.rowcount
+            marker = db.execute(
+                "SELECT value FROM portfolio_settings WHERE key='november_2026_seeded'"
+            ).fetchone()
+            if marker is not None:
+                return {"added": 0, "total_starter": len(STARTER)}
+            result = self._seed(db)
+            db.execute("INSERT INTO portfolio_settings(key,value) VALUES(?,?)",
+                       ("november_2026_seeded", "1"))
             db.commit()
+            return result
+
+    def import_starter(self):
+        """Explicit re-import is non-destructive and only restores missing seeds."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            result = self._seed(db)
+            db.execute("INSERT OR REPLACE INTO portfolio_settings(key,value) VALUES(?,?)",
+                       ("november_2026_seeded", "1"))
+            db.commit()
+            return result
+
+    @staticmethod
+    def _seed(db):
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        added = 0
+        for idx, line in enumerate(STARTER):
+            name, category, priority, hours, cost = line.split("|")
+            hl, hh = map(int, hours.split("-"))
+            cl, ch = map(int, cost.split("-"))
+            next_step, later, benefit, status = PROJECT_DETAILS[name]
+            item = validate_project({
+                "title": name, "category": category, "priority": priority,
+                "hours_low": hl, "hours_high": hh, "cost_low": cl, "cost_high": ch,
+                "status": status, "next_step": next_step,
+                "benefit": benefit, "later": later,
+                "checklist": [
+                    {"text": "Confirm outcome, scope and dependencies", "done": False},
+                    {"text": next_step[:300], "done": False},
+                    {"text": "Validate result and document what changed", "done": False},
+                ],
+            })
+            cur = db.execute("""INSERT OR IGNORE INTO portfolio_projects
+                (seed_key,data,created_at,updated_at) VALUES(?,?,?,?)""",
+                (f"2026-11-16:{idx:03d}", json.dumps(item, ensure_ascii=False), now, now))
+            added += cur.rowcount
         return {"added": added, "total_starter": len(STARTER)}
