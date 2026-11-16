@@ -11,6 +11,30 @@ const stages:{key:Status;name:string}[]=[
  {key:'blocked',name:'Waiting / blocked'},{key:'done',name:'Done'}
 ];
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+const dixyProject='Dixy takeaway website';
+const dixyTasks:TaskData[]=[
+ {title:'Confirm the brief, deliverables and success criteria',project:dixyProject,notes:'Agree what the £1,000 setup covers: pages, menu setup, ordering, revisions, launch and handover. Record exclusions and the monthly service after the included three months.',due_date:'',status:'todo',priority:'high'},
+ {title:'Audit the current site, menu and ordering journey',project:dixyProject,notes:'Capture current menu categories, prices, descriptions, popular items, delivery/collection rules, address and existing order journey. Owner confirms what is current.',due_date:'',status:'todo',priority:'high'},
+ {title:'Collect brand assets and restaurant information',project:dixyProject,notes:'Request approved logo, brand colours, food photography, phone number, opening hours, service area, delivery fees and social links.',due_date:'',status:'todo',priority:'high'},
+ {title:'Confirm domain registration and DNS plan',project:dixyProject,notes:'Restaurant is named as legal registrant. Confirm registrar access, renewals, DNS contact, and whether the current OrderYOYO domain must redirect at launch.',due_date:'',status:'todo',priority:'high'},
+ {title:'Create the owner review design',project:dixyProject,notes:'Design a mobile-first homepage, About, Contact and menu concept. Keep the ordering action clearly labelled as a draft until the owner approves it.',due_date:'',status:'todo',priority:'high'},
+ {title:'Review design with the owner and record changes',project:dixyProject,notes:'Show desktop and mobile layouts. Capture one consolidated revision round and get written approval for the visual direction.',due_date:'',status:'todo',priority:'high'},
+ {title:'Confirm the recurring cost and support schedule',project:dixyProject,notes:'List domain renewal, AWS, Orderable licence, automatic printing service, payment fees and 5limes care fee. Define response times and what counts as extra work.',due_date:'',status:'todo',priority:'high'},
+ {title:'Choose the menu and ordering configuration',project:dixyProject,notes:'Confirm WooCommerce + Orderable features needed: grid/list, images, meal options, extras, collection/delivery scheduling, delivery zones and order limits.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Check the restaurant printer and always-on device',project:dixyProject,notes:'Record printer make/model, paper width, USB/network connection and the computer/device that can stay on. Confirm supported drivers before buying anything.',due_date:'',status:'todo',priority:'high'},
+ {title:'Set up WordPress staging and protected administration',project:dixyProject,notes:'Provision a separate staging copy, HTTPS, unique admin accounts, backups, update policy and basic security monitoring before entering real customer data.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Build the branded public pages',project:dixyProject,notes:'Implement homepage, About, Contact and the menu/order entry point from the approved design. Check mobile layout and accessibility.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Install WooCommerce and Orderable',project:dixyProject,notes:'Configure the ordering pages and chosen menu layout. Verify any required paid Orderable features and licence ownership before purchase.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Load and verify the menu',project:dixyProject,notes:'Enter owner-approved item names, prices, descriptions, categories, photos, meal choices, extras and allergen details. Owner signs off the final menu.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Configure delivery, collection and opening rules',project:dixyProject,notes:'Set trading hours, lead times, collection slots, delivery area/postcodes, minimum spend, fees, order capacity and temporary order pause controls.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Set up the restaurant-owned payment account',project:dixyProject,notes:'Connect the owner’s payment gateway account and test successful payment, failed payment, refund and order confirmation emails.',due_date:'',status:'todo',priority:'high'},
+ {title:'Configure automatic kitchen ticket printing',project:dixyProject,notes:'Connect Orderable/BizPrint to the local print station, create a clear kitchen ticket, choose print triggers and copies, and test duplicates and printer disconnect recovery.',due_date:'',status:'todo',priority:'high'},
+ {title:'Run end-to-end test orders with the owner',project:dixyProject,notes:'Test mobile and desktop ordering, payment, customer emails, kitchen auto-print, pickup/delivery details, cancellations, refunds and the manual fallback if printing fails.',due_date:'',status:'todo',priority:'high'},
+ {title:'Create owner login and practise menu updates',project:dixyProject,notes:'Give the owner a separate least-privilege account. Walk through changing a price, adding a menu item/photo, marking an item unavailable and pausing orders.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Prepare legal, privacy and customer information',project:dixyProject,notes:'Confirm the restaurant supplies accurate business, allergen, delivery, privacy, cookie and terms information before launch.',due_date:'',status:'todo',priority:'normal'},
+ {title:'Plan DNS switch, redirects and launch checks',project:dixyProject,notes:'Only after sign-off: connect the new domain, test HTTPS and all routes, preserve useful links, confirm Google Business Profile URL, and keep a rollback path to the existing ordering site.',due_date:'',status:'todo',priority:'high'},
+ {title:'Launch, monitor and hand over the support plan',project:dixyProject,notes:'Monitor the first live orders and print queue, provide owner notes for routine menu edits, document backups and emergency contacts, and start the agreed monthly care plan after the included three months.',due_date:'',status:'todo',priority:'normal'}
+];
 export function WorkBoard({csrf}:{csrf:string}){
  const [tasks,setTasks]=useState<Task[]>([]);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
@@ -25,7 +49,21 @@ export function WorkBoard({csrf}:{csrf:string}){
      const response=await fetch('/admin/api/tasks',{credentials:'same-origin',cache:'no-store'});
      if(!response.ok)throw Error('Could not load the private work board.');
      const data=await response.json() as {tasks:Task[]};
-     setTasks(data.tasks);setError('');
+     let currentTasks=data.tasks;
+     const existingDixyTitles=new Set(currentTasks.filter(task=>task.project===dixyProject).map(task=>task.title));
+     const missingDixyTasks=dixyTasks.filter(task=>!existingDixyTitles.has(task.title));
+     if(missingDixyTasks.length){
+       for(const task of missingDixyTasks){
+         const created=await fetch('/admin/api/tasks',{method:'POST',credentials:'same-origin',headers:{
+           'Content-Type':'application/json','X-CSRF-Token':csrf
+         },body:JSON.stringify(task)});
+         if(!created.ok)throw Error('Could not add the Dixy project checklist to the work board.');
+       }
+       const refreshed=await fetch('/admin/api/tasks',{credentials:'same-origin',cache:'no-store'});
+       if(!refreshed.ok)throw Error('Could not refresh the private work board.');
+       currentTasks=(await refreshed.json() as {tasks:Task[]}).tasks;
+     }
+     setTasks(currentTasks);setError('');
    }catch(e){setError(String(e));}finally{if(!silent)setLoading(false);}
  }
  useEffect(()=>{void load();},[]);
