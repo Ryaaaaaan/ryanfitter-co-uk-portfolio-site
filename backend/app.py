@@ -18,6 +18,7 @@ from threading import Thread
 from backend.cms import ContentStore
 from backend.jobs import JobStore
 from backend.work_board import TaskStore
+from backend.freelance_projects import FreelanceProjectStore
 from backend.project_portfolio import ProjectStore
 from backend.job_matches import MatchStore, scan as scan_matches
 from backend.cv_vault import CvVault
@@ -75,6 +76,7 @@ def create_app() -> Flask:
     jobs = JobStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     tasks = TaskStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     portfolio = ProjectStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
+    freelance = FreelanceProjectStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     matches = MatchStore(os.environ.get("JOB_DATABASE", "/var/lib/ryanfitter-admin/jobs.sqlite3"))
     media = ImageLibrary(os.environ.get("CMS_MEDIA_DIR", "/var/lib/ryanfitter-admin/media"))
     cv = CvVault(os.environ.get("CV_DIRECTORY", "/var/lib/ryanfitter-admin/cvs"),
@@ -434,6 +436,39 @@ def create_app() -> Flask:
                 tasks.delete(task_id, data["revision"])
                 return "", 204
             return jsonify({"task": tasks.update(task_id, data.get("task"), data["revision"])})
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        except RuntimeError as error:
+            return jsonify({"error": str(error)}), 409
+
+    @app.route("/admin/api/freelance-projects", methods=["GET", "POST"])
+    def freelance_projects_collection():
+        if not signed_in():
+            abort(401)
+        if request.method == "GET":
+            freelance.ensure_starter()
+            return jsonify({"projects": freelance.all()})
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        try:
+            return jsonify({"project": freelance.create(request.get_json(silent=True))}), 201
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+
+    @app.route("/admin/api/freelance-projects/<project_id>", methods=["PUT", "DELETE"])
+    def freelance_project_detail(project_id):
+        if not signed_in():
+            abort(401)
+        if not can_write():
+            abort(403, description="Invalid request token or origin")
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or type(data.get("revision")) is not int:
+            return jsonify({"error": "Revision required"}), 400
+        try:
+            if request.method == "DELETE":
+                freelance.delete(project_id, data["revision"])
+                return "", 204
+            return jsonify({"project": freelance.update(project_id, data.get("project"), data["revision"])})
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
         except RuntimeError as error:
