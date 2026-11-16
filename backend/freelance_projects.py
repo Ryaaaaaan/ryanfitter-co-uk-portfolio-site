@@ -19,9 +19,9 @@ DEFAULT_DESIGN = {
     "address": "Colne",
     "delivery_note": "Collection and delivery details to be confirmed.",
     "menu": [
-        {"name": "Classic chicken burger", "description": "Crispy chicken, fresh salad and house mayo.", "price": "£6.49"},
-        {"name": "Family sharing box", "description": "A generous mix for sharing. Final menu to be confirmed.", "price": "£18.99"},
-        {"name": "Loaded fries", "description": "Golden fries with your choice of toppings.", "price": "£4.49"}
+        {"name": "Menu item to confirm", "description": "Replace with a client-approved item description.", "price": "TBC"},
+        {"name": "Popular meal to confirm", "description": "Add the approved meal description.", "price": "TBC"},
+        {"name": "Side to confirm", "description": "Add an approved side and description.", "price": "TBC"}
     ]
 }
 DEFAULT_PROJECT = {
