@@ -284,5 +284,30 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
     <div className="portfolio-modal-actions"><button type="button" disabled={busy} onClick={()=>setEditor(null)}>Cancel</button><button type="submit" disabled={busy} className="portfolio-primary">{busy?'Saving…':'Save project'}</button></div>
    </form>
   </div>}
+  {manageTabs&&<div className="portfolio-modal-bg" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setManageTabs(false);}}>
+   <form className="portfolio-modal portfolio-tabs-modal" onSubmit={e=>{e.preventDefault();void saveTabs();}}>
+    <header><h3>Manage workstream tabs</h3><p>Rename tabs, drag them or use the arrows to reorder. Move projects out of a tab before removing it.</p></header>
+    <div className="portfolio-tabs-editor">
+     {tabDraft.map((t,index)=><div className="portfolio-tab-row" key={t.id} draggable
+      onDragStart={()=>setDragTab(t.id)} onDragEnd={()=>setDragTab(null)}
+      onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!dragTab)return;const from=tabDraft.findIndex(x=>x.id===dragTab);moveTab(from,index);setDragTab(null)}}>
+      <span className="portfolio-tab-handle" title="Drag to reorder">⠿</span>
+      <input aria-label={'Name for tab '+(index+1)} value={t.name} maxLength={50} required
+       onChange={e=>setTabDraft(v=>v.map(x=>x.id===t.id?{...x,name:e.target.value}:x))}/>
+      <button type="button" disabled={index===0} title="Move left" onClick={()=>moveTab(index,index-1)}>↑</button>
+      <button type="button" disabled={index===tabDraft.length-1} title="Move right" onClick={()=>moveTab(index,index+1)}>↓</button>
+      <button type="button" disabled={t.id==='other'||items.some(p=>p.board_id===t.id)}
+       title={items.some(p=>p.board_id===t.id)?'Move projects elsewhere before deleting':'Remove tab'}
+       onClick={()=>setTabDraft(v=>v.filter(x=>x.id!==t.id))}>×</button>
+     </div>)}
+    </div>
+    {error&&<p className="portfolio-error" role="alert">{error}</p>}
+    <div className="portfolio-modal-actions">
+     <button type="button" onClick={addTab} disabled={busy||tabDraft.length>=40}>+ Add tab</button>
+     <button type="button" disabled={busy} onClick={()=>setManageTabs(false)}>Cancel</button>
+     <button type="submit" className="portfolio-primary" disabled={busy||tabDraft.some(t=>!t.name.trim())}>{busy?'Saving…':'Save tabs'}</button>
+    </div>
+   </form>
+  </div>}
  </section>;
 }
