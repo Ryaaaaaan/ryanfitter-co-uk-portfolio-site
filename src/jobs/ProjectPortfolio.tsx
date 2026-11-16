@@ -5,12 +5,14 @@ type Status='backlog'|'active'|'waiting'|'done'|'parked';
 type Priority='P0'|'P1'|'P2'|'P3'|'P4';
 type Step={id:string;text:string;done:boolean;due_date:string};
 type Data={
- title:string;category:string;priority:Priority;status:Status;
+ title:string;category:string;board_id:string;priority:Priority;status:Status;
  hours_low:number;hours_high:number;cost_low:number;cost_high:number;
  due_date:string;benefit:string;next_step:string;later:string;notes:string;checklist:Step[]
 };
 type Project=Data&{id:number;revision:number;created_at:string;updated_at:string};
-const fresh:Data={title:'',category:'Commercial',priority:'P2',status:'backlog',
+type Tab={id:string;name:string};
+type TabsState={revision:number;tabs:Tab[]};
+const fresh:Data={title:'',category:'Commercial',board_id:'other',priority:'P2',status:'backlog',
  hours_low:0,hours_high:0,cost_low:0,cost_high:0,due_date:'',
  benefit:'',next_step:'',later:'',notes:'',checklist:[]};
 const stages:Record<Status,string>={backlog:'Queued',active:'In progress',waiting:'Waiting',done:'Completed',parked:'Parked'};
@@ -22,7 +24,7 @@ const shortDate=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('en-GB',{
 const weekRange=(p:Project,h:number)=>(Math.ceil(p.hours_low/h*10)/10)+'–'+(Math.ceil(p.hours_high/h*10)/10)+' weeks';
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
 const asData=(p:Project):Data=>({
- title:p.title,category:p.category,priority:p.priority,status:p.status,
+ title:p.title,category:p.category,board_id:p.board_id,priority:p.priority,status:p.status,
  hours_low:p.hours_low,hours_high:p.hours_high,cost_low:p.cost_low,cost_high:p.cost_high,
  due_date:p.due_date,benefit:p.benefit,next_step:p.next_step,later:p.later,notes:p.notes,
  checklist:p.checklist.map(s=>({...s}))
@@ -34,24 +36,39 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
  const [query,setQuery]=useState(''),[category,setCategory]=useState('all');
  const [priority,setPriority]=useState('all'),[stage,setStage]=useState('all');
  const [selected,setSelected]=useState<number|null>(null);
+ const [tabs,setTabs]=useState<TabsState>({revision:1,tabs:[]});
+ const [activeTab,setActiveTab]=useState('lopt');
+ const [view,setView]=useState<'board'|'list'>('board');
+ const [manageTabs,setManageTabs]=useState(false);
+ const [tabDraft,setTabDraft]=useState<Tab[]>([]);
+ const [dragTab,setDragTab]=useState<string|null>(null);
+ const [dragProject,setDragProject]=useState<number|null>(null);
  const [editor,setEditor]=useState<{item:Project|null;form:Data}|null>(null);
  const [stepText,setStepText]=useState(''),[stepDue,setStepDue]=useState('');
  const [stepEditor,setStepEditor]=useState<{id:string;text:string;due_date:string}|null>(null);
  const project=items.find(p=>p.id===selected)||null;
  const categories=useMemo(()=>Array.from(new Set([...defaults,...items.map(p=>p.category)])).sort(),[items]);
  const visible=useMemo(()=>items.filter(p=>{
+  if(activeTab!=='all'&&p.board_id!==activeTab)return false;
   if(category!=='all'&&p.category!==category)return false;
   if(priority!=='all'&&p.priority!==priority)return false;
   if(stage!=='all'&&p.status!==stage)return false;
   return [p.title,p.category,p.benefit,p.next_step,p.notes].join(' ').toLowerCase().includes(query.trim().toLowerCase());
- }).sort((a,b)=>a.priority.localeCompare(b.priority)||a.title.localeCompare(b.title)),[items,query,category,priority,stage]);
+ }).sort((a,b)=>a.priority.localeCompare(b.priority)||a.title.localeCompare(b.title)),[items,activeTab,query,category,priority,stage]);
+ async function refreshTabs(){
+  const r=await fetch('/admin/api/project-tabs',{credentials:'same-origin',cache:'no-store'});
+  if(!r.ok)throw Error('Could not load project tabs.');
+  const data=await r.json() as TabsState;
+  setTabs(data);
+  setActiveTab(current=>current==='all'||data.tabs.some(t=>t.id===current)?current:(data.tabs[0]?.id||'all'));
+ }
  async function refresh(){
   const r=await fetch('/admin/api/projects',{credentials:'same-origin',cache:'no-store'});
   if(!r.ok)throw Error('Could not load private projects.');
   const data=await r.json() as {projects:Project[]};
   setItems(data.projects);
  }
- useEffect(()=>{void refresh().catch(e=>setError(String(e))).finally(()=>setLoad(false));},[]);
+ useEffect(()=>{void Promise.all([refresh(),refreshTabs()]).catch(e=>setError(String(e))).finally(()=>setLoad(false));},[]);
  async function call(path:string,method:string,body:unknown){
   const r=await fetch(path,{method,credentials:'same-origin',headers:{
     'Content-Type':'application/json','X-CSRF-Token':csrf
@@ -76,7 +93,10 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
    setEditor(null);setNotice(item?'Project updated.':'Project added.');
   });
  }
- function edit(p:Project|null){setEditor({item:p,form:p?asData(p):{...fresh,checklist:[]}});setError('');}
+ function edit(p:Project|null){
+  setEditor({item:p,form:p?asData(p):{...fresh,board_id:activeTab==='all'?'other':activeTab,checklist:[]}});
+  setError('');
+ }
  async function update(p:Project,data:Data){
   await run(async()=>{await call('/admin/api/projects/'+p.id,'PUT',{revision:p.revision,project:data});});
  }
@@ -101,8 +121,29 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
     setNotice('Restored '+r.added+' missing projects; existing projects were not overwritten.');
   });
  }
+ async function saveTabs(){
+  await run(async()=>{
+   const data=await call('/admin/api/project-tabs','PUT',{revision:tabs.revision,tabs:tabDraft}) as TabsState;
+   setTabs(data);setManageTabs(false);
+   if(activeTab!=='all'&&!data.tabs.some(t=>t.id===activeTab))setActiveTab('all');
+   setNotice('Tabs saved and reordered.');
+  });
+ }
+ function startManageTabs(){setTabDraft(tabs.tabs.map(t=>({...t})));setManageTabs(true);setError('');}
+ function addTab(){
+  if(tabDraft.length>=40){setError('A maximum of 40 tabs is supported.');return;}
+  setTabDraft(v=>[...v,{id:'tab_'+Math.random().toString(36).slice(2,12),name:'New tab'}]);
+ }
+ function moveTab(from:number,to:number){
+  if(to<0||to>=tabDraft.length||from===to)return;
+  setTabDraft(v=>{const copy=[...v];const [moved]=copy.splice(from,1);copy.splice(to,0,moved);return copy;});
+ }
+ async function dropProject(id:number,status:Status){
+  const p=items.find(x=>x.id===id);setDragProject(null);
+  if(p&&p.status!==status)await update(p,{...asData(p),status});
+ }
  function exportBackup(){
-  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),projects:items},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),projects:items,tabs},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='ryan-projects-backup.json';link.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
@@ -122,14 +163,54 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
   <div className="portfolio-cap"><strong>Weekly planning limit: 70 hours across all projects.</strong> Hour estimates below are for the next deliverable, not for indefinitely finishing a business. P0 means immediate, P4 means intentionally deferred.</div>
   {error&&<p className="portfolio-error" role="alert">{error}</p>}
   {notice&&<p className="portfolio-success" role="status">{notice}</p>}
+  <div className="portfolio-workstream-nav" aria-label="Project workstream tabs">
+   <div className="portfolio-tabs" role="tablist" aria-label="Workstreams">
+    <button type="button" role="tab" aria-selected={activeTab==='all'} className={'portfolio-tab'+(activeTab==='all'?' is-active':'')} onClick={()=>{setActiveTab('all');setSelected(null)}}>All projects <span>{items.length}</span></button>
+    {tabs.tabs.map(t=><button key={t.id} type="button" role="tab" aria-selected={activeTab===t.id}
+      className={'portfolio-tab'+(activeTab===t.id?' is-active':'')} onClick={()=>{setActiveTab(t.id);setSelected(null)}}>
+      {t.name} <span>{items.filter(p=>p.board_id===t.id).length}</span>
+    </button>)}
+   </div>
+   <button type="button" className="portfolio-tab-manage" onClick={startManageTabs} title="Add, rename, delete or reorder workstream tabs">⚙ Manage tabs</button>
+  </div>
+  <div className="portfolio-board-toolbar">
+   <div><strong>{activeTab==='all'?'All projects':tabs.tabs.find(t=>t.id===activeTab)?.name||'Workstream'}</strong><small>Drag project cards between columns, or open a card to edit its details.</small></div>
+   <div className="portfolio-view-switch" role="group" aria-label="Project display mode">
+    <button type="button" aria-pressed={view==='board'} className={view==='board'?'active':''} onClick={()=>setView('board')}>▦ Board</button>
+    <button type="button" aria-pressed={view==='list'} className={view==='list'?'active':''} onClick={()=>setView('list')}>☷ List</button>
+   </div>
+  </div>
   <div className="portfolio-filters">
    <label>Search<input type="search" placeholder="Project name, benefit, note…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
    <label>Category<select value={category} onChange={e=>setCategory(e.target.value)}><option value="all">All categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></label>
    <label>Priority<select value={priority} onChange={e=>setPriority(e.target.value)}><option value="all">All priorities</option>{['P0','P1','P2','P3','P4'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
    <label>Status<select value={stage} onChange={e=>setStage(e.target.value)}><option value="all">All statuses</option>{(Object.keys(stages) as Status[]).map(s=><option key={s} value={s}>{stages[s]}</option>)}</select></label>
   </div>
-  {load?<p>Loading projects…</p>:<div className="portfolio-body">
-    <div className="portfolio-list" aria-label="Project list">
+  {load?<p>Loading projects…</p>:<div className={'portfolio-body'+(view==='board'?' portfolio-board-mode':'')}>
+    {view==='board'?<div className="portfolio-kanban" aria-label="Project status board">
+     {(Object.keys(stages) as Status[]).map(status=><section key={status} className="portfolio-kanban-column"
+       aria-label={stages[status]} onDragOver={e=>e.preventDefault()}
+       onDrop={e=>{e.preventDefault();if(dragProject!==null)void dropProject(dragProject,status);}}>
+      <header><strong>{stages[status]}</strong><span>{visible.filter(p=>p.status===status).length}</span></header>
+      <div className="portfolio-kanban-stack">
+      {visible.filter(p=>p.status===status).map(p=><button type="button" key={p.id} draggable={!busy}
+        className={'portfolio-kanban-card'+(p.id===selected?' selected':'')}
+        onDragStart={e=>{setDragProject(p.id);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(p.id));}}
+        onDragEnd={()=>setDragProject(null)}
+        onClick={()=>{setSelected(p.id);setStepEditor(null);}}>
+       <div className="portfolio-kanban-label"><em className={'portfolio-prio '+p.priority}>{p.priority}</em><span>{p.category}</span></div>
+       <strong>{p.title}</strong>
+       <span className="portfolio-kanban-meta">
+        {p.due_date&&<span className={p.due_date<today()&&p.status!=='done'?'portfolio-late':''}>◷ {shortDate(p.due_date)}</span>}
+        <span>☑ {completed(p)}/{p.checklist.length}</span>
+       </span>
+       <span className="portfolio-progress"><span style={{width:progress(p)+'%'}}/></span>
+      </button>)}
+      {visible.every(p=>p.status!==status)&&<p className="portfolio-kanban-empty">Drop a card here</p>}
+      </div>
+      <button type="button" className="portfolio-kanban-add" onClick={()=>{edit(null);setEditor(v=>v?{...v,form:{...v.form,status}}:v)}}>+ Add project</button>
+     </section>)}
+    </div>:<>    <div className="portfolio-list" aria-label="Project list">
      {visible.length===0?<p>No matching projects.</p>:visible.map(p=><button type="button" key={p.id}
        className={'portfolio-list-item'+(p.id===selected?' current':'')} onClick={()=>{setSelected(p.id);setStepEditor(null);}}>
        <span className="portfolio-list-top"><strong>{p.title}</strong><em className={'portfolio-prio '+p.priority}>{p.priority}</em></span>
@@ -138,9 +219,10 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
        <span className="portfolio-list-bottom">{completed(p)}/{p.checklist.length} steps{p.due_date?' · Due '+shortDate(p.due_date):''}</span>
       </button>)}
     </div>
+</>}
     <article className="portfolio-detail">
      {!project?<div className="portfolio-placeholder"><h3>Your master project portfolio</h3><p>Select a project on the left to see its milestones, cash requirement, hours, deadline and checklists. Every field can be edited.</p><p>All 46 November plan projects were imported on first visit; future projects can be added without code changes.</p></div>:<>
-      <div className="portfolio-detail-title"><div><span className="portfolio-kicker">{project.priority} · {project.category}</span><h3>{project.title}</h3><p>{stages[project.status]}</p></div><button type="button" className="portfolio-secondary" onClick={()=>edit(project)}>Edit project</button></div>
+      <div className="portfolio-detail-title"><div><span className="portfolio-kicker">{project.priority} · {project.category} · {tabs.tabs.find(t=>t.id===project.board_id)?.name||'Other'}</span><h3>{project.title}</h3><p>{stages[project.status]}</p></div><button type="button" className="portfolio-secondary" onClick={()=>edit(project)}>Edit project</button></div>
       <div className="portfolio-mini-metrics"><div><small>Remaining estimate</small><strong>{project.hours_low}–{project.hours_high}h</strong></div><div><small>Initial added cost</small><strong>{currency(project.cost_low)}–{currency(project.cost_high)}</strong></div><div><small>Deadline</small><strong>{project.due_date?shortDate(project.due_date):'Not set'}</strong></div></div>
       <details className="portfolio-hours"><summary>Timeframes at 5, 10, 20 or 40 hours/week</summary>
        <div className="portfolio-hours-grid">{[5,10,20,40].map(h=><div key={h}><strong>{h}h/week</strong><span>{weekRange(project,h)}</span></div>)}</div>
@@ -169,6 +251,14 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
        <label>Optional deadline<input aria-label="Checklist deadline" type="date" value={stepDue} onChange={e=>setStepDue(e.target.value)}/></label>
        <button type="submit" className="portfolio-primary" disabled={busy||!stepText.trim()}>Add step</button>
       </form>
+      <div className="portfolio-board-card-actions">
+       <label>Move to tab <select disabled={busy} value={project.board_id} onChange={e=>void update(project,{...asData(project),board_id:e.target.value}).then(()=>setSelected(null))}>
+        {tabs.tabs.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+       </select></label>
+       <label>Move to column <select disabled={busy} value={project.status} onChange={e=>void update(project,{...asData(project),status:e.target.value as Status})}>
+        {(Object.keys(stages) as Status[]).map(key=><option key={key} value={key}>{stages[key]}</option>)}
+       </select></label>
+      </div>
       <footer className="portfolio-detail-footer"><button type="button" className="portfolio-danger" disabled={busy} onClick={()=>void removeProject(project)}>Delete project</button><small>Updated {new Date(project.updated_at).toLocaleDateString('en-GB')}</small></footer>
      </>}
     </article>
@@ -179,6 +269,9 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
     <header><h3>{editor.item?'Edit project':'Add project'}</h3><p>Manage all of these fields without changing code.</p></header>
     <label>Project title<input autoFocus required maxLength={180} value={editor.form.title} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,title:e.target.value}}:v)}/></label>
     <div className="portfolio-form-grid">
+     <label>Workstream tab<select value={editor.form.board_id} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,board_id:e.target.value}}:v)}>
+      {tabs.tabs.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+     </select></label>
      <label>Category<input list="portfolio-category-list" required maxLength={60} value={editor.form.category} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,category:e.target.value}}:v)}/><datalist id="portfolio-category-list">{categories.map(c=><option key={c} value={c}/>)}</datalist></label>
      <label>Priority<select value={editor.form.priority} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,priority:e.target.value as Priority}}:v)}>{['P0','P1','P2','P3','P4'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
      <label>Status<select value={editor.form.status} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,status:e.target.value as Status}}:v)}>{(Object.keys(stages) as Status[]).map(s=><option key={s} value={s}>{stages[s]}</option>)}</select></label>
@@ -189,6 +282,31 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
      <textarea rows={field==='notes'?4:2} maxLength={field==='notes'?8000:field==='benefit'?650:1000} value={editor.form[field]} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,[field]:e.target.value}}:v)}/></label>)}
     {editor.item&&<p className="portfolio-modal-note">To edit checklist items and their deadlines, save and use the project detail view. Existing checklist progress will be preserved.</p>}
     <div className="portfolio-modal-actions"><button type="button" disabled={busy} onClick={()=>setEditor(null)}>Cancel</button><button type="submit" disabled={busy} className="portfolio-primary">{busy?'Saving…':'Save project'}</button></div>
+   </form>
+  </div>}
+  {manageTabs&&<div className="portfolio-modal-bg" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)setManageTabs(false);}}>
+   <form className="portfolio-modal portfolio-tabs-modal" onSubmit={e=>{e.preventDefault();void saveTabs();}}>
+    <header><h3>Manage workstream tabs</h3><p>Rename tabs, drag them or use the arrows to reorder. Move projects out of a tab before removing it.</p></header>
+    <div className="portfolio-tabs-editor">
+     {tabDraft.map((t,index)=><div className="portfolio-tab-row" key={t.id} draggable
+      onDragStart={()=>setDragTab(t.id)} onDragEnd={()=>setDragTab(null)}
+      onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!dragTab)return;const from=tabDraft.findIndex(x=>x.id===dragTab);moveTab(from,index);setDragTab(null)}}>
+      <span className="portfolio-tab-handle" title="Drag to reorder">⠿</span>
+      <input aria-label={'Name for tab '+(index+1)} value={t.name} maxLength={50} required
+       onChange={e=>setTabDraft(v=>v.map(x=>x.id===t.id?{...x,name:e.target.value}:x))}/>
+      <button type="button" disabled={index===0} title="Move left" onClick={()=>moveTab(index,index-1)}>↑</button>
+      <button type="button" disabled={index===tabDraft.length-1} title="Move right" onClick={()=>moveTab(index,index+1)}>↓</button>
+      <button type="button" disabled={t.id==='other'||items.some(p=>p.board_id===t.id)}
+       title={items.some(p=>p.board_id===t.id)?'Move projects elsewhere before deleting':'Remove tab'}
+       onClick={()=>setTabDraft(v=>v.filter(x=>x.id!==t.id))}>×</button>
+     </div>)}
+    </div>
+    {error&&<p className="portfolio-error" role="alert">{error}</p>}
+    <div className="portfolio-modal-actions">
+     <button type="button" onClick={addTab} disabled={busy||tabDraft.length>=40}>+ Add tab</button>
+     <button type="button" disabled={busy} onClick={()=>setManageTabs(false)}>Cancel</button>
+     <button type="submit" className="portfolio-primary" disabled={busy||tabDraft.some(t=>!t.name.trim())}>{busy?'Saving…':'Save tabs'}</button>
+    </div>
    </form>
   </div>}
  </section>;
