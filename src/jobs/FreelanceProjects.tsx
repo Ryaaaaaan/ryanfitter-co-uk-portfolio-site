@@ -1,4 +1,4 @@
-import {useEffect,useState} from "react";
+import {useEffect,useState,type CSSProperties} from "react";
 import "../styles/freelance-projects.css";
 
 type MenuItem={name:string;description:string;price:string};
@@ -123,7 +123,7 @@ export function FreelanceProjects({csrf}:{csrf:string}){
 }
 
 function Storefront({design}:{design:Design}){
- return <div className="takeaway-preview" style={{"--takeaway-accent":design.accent} as React.CSSProperties}>
+ return <div className="takeaway-preview" style={{"--takeaway-accent":design.accent} as CSSProperties}>
    <div className="takeaway-top"><span>LOCAL TAKEAWAY</span><span>{design.address||"Your local area"}</span></div>
    <header className="takeaway-brand"><strong>{design.brand}</strong><span>{design.phone||"Collection · Delivery"}</span></header>
    <section className="takeaway-hero"><div><span className="takeaway-pill">FRESHLY MADE · READY TO ORDER</span><h2>{design.headline}</h2><p>{design.subheading}</p><button type="button">{design.cta} <b>→</b></button></div><div className="takeaway-food-art" aria-hidden="true"><span>🍗</span><i>✦</i></div></section>
