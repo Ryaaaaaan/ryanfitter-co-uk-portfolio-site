@@ -126,7 +126,7 @@ function Storefront({design}:{design:Design}){
  return <div className="takeaway-preview" style={{"--takeaway-accent":design.accent} as CSSProperties}>
    <div className="takeaway-top"><span>LOCAL TAKEAWAY</span><span>{design.address||"Your local area"}</span></div>
    <header className="takeaway-brand"><strong>{design.brand}</strong><span>{design.phone||"Collection · Delivery"}</span></header>
-   <section className="takeaway-hero"><div><span className="takeaway-pill">FRESHLY MADE · READY TO ORDER</span><h2>{design.headline}</h2><p>{design.subheading}</p><button type="button">{design.cta} <b>→</b></button></div><div className="takeaway-food-art" aria-hidden="true"><span>🍗</span><i>✦</i></div></section>
+   <section className="takeaway-hero"><div><span className="takeaway-pill">DESIGN DRAFT · ORDER FLOW TO CONFIRM</span><h2>{design.headline}</h2><p>{design.subheading}</p><button type="button">{design.cta} <b>→</b></button></div><div className="takeaway-food-art" aria-hidden="true"><span>🍗</span><i>✦</i></div></section>
    <section className="takeaway-menu"><div className="takeaway-menu-heading"><div><small>THE MENU</small><h3>Local favourites</h3></div><button type="button">View full menu →</button></div>
      <div className="takeaway-menu-grid">{(design.menu.length?design.menu:[{name:"Menu item preview",description:"Add items in the Design CMS.",price:"£—"}]).map((item,i)=><article key={i}><div className={"takeaway-food-thumb thumb-"+(i%3)}>🍟</div><div><strong>{item.name}</strong><p>{item.description}</p><b>{item.price}</b></div><button type="button" aria-label={"Add "+item.name}>＋</button></article>)}</div>
    </section><footer className="takeaway-footer">{design.delivery_note}{design.phone?" · "+design.phone:""}</footer>
