@@ -163,14 +163,54 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
   <div className="portfolio-cap"><strong>Weekly planning limit: 70 hours across all projects.</strong> Hour estimates below are for the next deliverable, not for indefinitely finishing a business. P0 means immediate, P4 means intentionally deferred.</div>
   {error&&<p className="portfolio-error" role="alert">{error}</p>}
   {notice&&<p className="portfolio-success" role="status">{notice}</p>}
+  <div className="portfolio-workstream-nav" aria-label="Project workstream tabs">
+   <div className="portfolio-tabs" role="tablist" aria-label="Workstreams">
+    <button type="button" role="tab" aria-selected={activeTab==='all'} className={'portfolio-tab'+(activeTab==='all'?' is-active':'')} onClick={()=>{setActiveTab('all');setSelected(null)}}>All projects <span>{items.length}</span></button>
+    {tabs.tabs.map(t=><button key={t.id} type="button" role="tab" aria-selected={activeTab===t.id}
+      className={'portfolio-tab'+(activeTab===t.id?' is-active':'')} onClick={()=>{setActiveTab(t.id);setSelected(null)}}>
+      {t.name} <span>{items.filter(p=>p.board_id===t.id).length}</span>
+    </button>)}
+   </div>
+   <button type="button" className="portfolio-tab-manage" onClick={startManageTabs} title="Add, rename, delete or reorder workstream tabs">⚙ Manage tabs</button>
+  </div>
+  <div className="portfolio-board-toolbar">
+   <div><strong>{activeTab==='all'?'All projects':tabs.tabs.find(t=>t.id===activeTab)?.name||'Workstream'}</strong><small>Drag project cards between columns, or open a card to edit its details.</small></div>
+   <div className="portfolio-view-switch" role="group" aria-label="Project display mode">
+    <button type="button" aria-pressed={view==='board'} className={view==='board'?'active':''} onClick={()=>setView('board')}>▦ Board</button>
+    <button type="button" aria-pressed={view==='list'} className={view==='list'?'active':''} onClick={()=>setView('list')}>☷ List</button>
+   </div>
+  </div>
   <div className="portfolio-filters">
    <label>Search<input type="search" placeholder="Project name, benefit, note…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
    <label>Category<select value={category} onChange={e=>setCategory(e.target.value)}><option value="all">All categories</option>{categories.map(c=><option key={c} value={c}>{c}</option>)}</select></label>
    <label>Priority<select value={priority} onChange={e=>setPriority(e.target.value)}><option value="all">All priorities</option>{['P0','P1','P2','P3','P4'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
    <label>Status<select value={stage} onChange={e=>setStage(e.target.value)}><option value="all">All statuses</option>{(Object.keys(stages) as Status[]).map(s=><option key={s} value={s}>{stages[s]}</option>)}</select></label>
   </div>
-  {load?<p>Loading projects…</p>:<div className="portfolio-body">
-    <div className="portfolio-list" aria-label="Project list">
+  {load?<p>Loading projects…</p>:<div className={'portfolio-body'+(view==='board'?' portfolio-board-mode':'')}>
+    {view==='board'?<div className="portfolio-kanban" aria-label="Project status board">
+     {(Object.keys(stages) as Status[]).map(status=><section key={status} className="portfolio-kanban-column"
+       aria-label={stages[status]} onDragOver={e=>e.preventDefault()}
+       onDrop={e=>{e.preventDefault();if(dragProject!==null)void dropProject(dragProject,status);}}>
+      <header><strong>{stages[status]}</strong><span>{visible.filter(p=>p.status===status).length}</span></header>
+      <div className="portfolio-kanban-stack">
+      {visible.filter(p=>p.status===status).map(p=><button type="button" key={p.id} draggable={!busy}
+        className={'portfolio-kanban-card'+(p.id===selected?' selected':'')}
+        onDragStart={e=>{setDragProject(p.id);e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(p.id));}}
+        onDragEnd={()=>setDragProject(null)}
+        onClick={()=>{setSelected(p.id);setStepEditor(null);}}>
+       <div className="portfolio-kanban-label"><em className={'portfolio-prio '+p.priority}>{p.priority}</em><span>{p.category}</span></div>
+       <strong>{p.title}</strong>
+       <span className="portfolio-kanban-meta">
+        {p.due_date&&<span className={p.due_date<today()&&p.status!=='done'?'portfolio-late':''}>◷ {shortDate(p.due_date)}</span>}
+        <span>☑ {completed(p)}/{p.checklist.length}</span>
+       </span>
+       <span className="portfolio-progress"><span style={{width:progress(p)+'%'}}/></span>
+      </button>)}
+      {visible.every(p=>p.status!==status)&&<p className="portfolio-kanban-empty">Drop a card here</p>}
+      </div>
+      <button type="button" className="portfolio-kanban-add" onClick={()=>{edit(null);setEditor(v=>v?{...v,form:{...v.form,status}}:v)}}>+ Add project</button>
+     </section>)}
+    </div>:<>    <div className="portfolio-list" aria-label="Project list">
      {visible.length===0?<p>No matching projects.</p>:visible.map(p=><button type="button" key={p.id}
        className={'portfolio-list-item'+(p.id===selected?' current':'')} onClick={()=>{setSelected(p.id);setStepEditor(null);}}>
        <span className="portfolio-list-top"><strong>{p.title}</strong><em className={'portfolio-prio '+p.priority}>{p.priority}</em></span>
@@ -179,9 +219,10 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
        <span className="portfolio-list-bottom">{completed(p)}/{p.checklist.length} steps{p.due_date?' · Due '+shortDate(p.due_date):''}</span>
       </button>)}
     </div>
+</>}
     <article className="portfolio-detail">
      {!project?<div className="portfolio-placeholder"><h3>Your master project portfolio</h3><p>Select a project on the left to see its milestones, cash requirement, hours, deadline and checklists. Every field can be edited.</p><p>All 46 November plan projects were imported on first visit; future projects can be added without code changes.</p></div>:<>
-      <div className="portfolio-detail-title"><div><span className="portfolio-kicker">{project.priority} · {project.category}</span><h3>{project.title}</h3><p>{stages[project.status]}</p></div><button type="button" className="portfolio-secondary" onClick={()=>edit(project)}>Edit project</button></div>
+      <div className="portfolio-detail-title"><div><span className="portfolio-kicker">{project.priority} · {project.category} · {tabs.tabs.find(t=>t.id===project.board_id)?.name||'Other'}</span><h3>{project.title}</h3><p>{stages[project.status]}</p></div><button type="button" className="portfolio-secondary" onClick={()=>edit(project)}>Edit project</button></div>
       <div className="portfolio-mini-metrics"><div><small>Remaining estimate</small><strong>{project.hours_low}–{project.hours_high}h</strong></div><div><small>Initial added cost</small><strong>{currency(project.cost_low)}–{currency(project.cost_high)}</strong></div><div><small>Deadline</small><strong>{project.due_date?shortDate(project.due_date):'Not set'}</strong></div></div>
       <details className="portfolio-hours"><summary>Timeframes at 5, 10, 20 or 40 hours/week</summary>
        <div className="portfolio-hours-grid">{[5,10,20,40].map(h=><div key={h}><strong>{h}h/week</strong><span>{weekRange(project,h)}</span></div>)}</div>
@@ -210,6 +251,14 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
        <label>Optional deadline<input aria-label="Checklist deadline" type="date" value={stepDue} onChange={e=>setStepDue(e.target.value)}/></label>
        <button type="submit" className="portfolio-primary" disabled={busy||!stepText.trim()}>Add step</button>
       </form>
+      <div className="portfolio-board-card-actions">
+       <label>Move to tab <select disabled={busy} value={project.board_id} onChange={e=>void update(project,{...asData(project),board_id:e.target.value}).then(()=>setSelected(null))}>
+        {tabs.tabs.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+       </select></label>
+       <label>Move to column <select disabled={busy} value={project.status} onChange={e=>void update(project,{...asData(project),status:e.target.value as Status})}>
+        {(Object.keys(stages) as Status[]).map(key=><option key={key} value={key}>{stages[key]}</option>)}
+       </select></label>
+      </div>
       <footer className="portfolio-detail-footer"><button type="button" className="portfolio-danger" disabled={busy} onClick={()=>void removeProject(project)}>Delete project</button><small>Updated {new Date(project.updated_at).toLocaleDateString('en-GB')}</small></footer>
      </>}
     </article>
@@ -220,6 +269,9 @@ export function ProjectPortfolio({csrf}:{csrf:string}){
     <header><h3>{editor.item?'Edit project':'Add project'}</h3><p>Manage all of these fields without changing code.</p></header>
     <label>Project title<input autoFocus required maxLength={180} value={editor.form.title} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,title:e.target.value}}:v)}/></label>
     <div className="portfolio-form-grid">
+     <label>Workstream tab<select value={editor.form.board_id} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,board_id:e.target.value}}:v)}>
+      {tabs.tabs.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+     </select></label>
      <label>Category<input list="portfolio-category-list" required maxLength={60} value={editor.form.category} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,category:e.target.value}}:v)}/><datalist id="portfolio-category-list">{categories.map(c=><option key={c} value={c}/>)}</datalist></label>
      <label>Priority<select value={editor.form.priority} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,priority:e.target.value as Priority}}:v)}>{['P0','P1','P2','P3','P4'].map(x=><option key={x} value={x}>{x}</option>)}</select></label>
      <label>Status<select value={editor.form.status} onChange={e=>setEditor(v=>v?{...v,form:{...v.form,status:e.target.value as Status}}:v)}>{(Object.keys(stages) as Status[]).map(s=><option key={s} value={s}>{stages[s]}</option>)}</select></label>
